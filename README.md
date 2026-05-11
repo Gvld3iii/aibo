@@ -214,11 +214,7 @@ Local JSON files now. S3 + Aurora when we have users. The code is designed to sw
 
 ## Built By
 
-**Kharee Bellamy** — [@goldiedoestech](https://twitter.com/goldiedoestech)
-
-Building Aibo in public. Follow the journey.
-
-The AI has its own account too: [@iamaibo](https://twitter.com/iamaibo)
+**Kharee Bellamy** — [@goldiedoestech](https://twitter.com/goldiedoestech) | Follow the AI: [@BuildingAibo](https://twitter.com/BuildingAibo)
 
 ---
 
@@ -227,5 +223,3 @@ The AI has its own account too: [@iamaibo](https://twitter.com/iamaibo)
 MIT — build on it, fork it, make it yours.
 
 ---
-
-*"The garage is my bedroom. The weed is Red Bull. The black turtleneck is a hoodie. But the energy is the same."*
