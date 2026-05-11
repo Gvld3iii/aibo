@@ -1,0 +1,2668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Aibo</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --orb-color: #6C5DD3;
+      --orb-glow:  #9b8fef;
+      --orb-dark:  #3a2fa0;
+      --orb-size:  56px;
+      --surface:   #13132a;
+      --surface2:  #1a1a35;
+      --text:      #e0dff8;
+      --text-muted:#7070a0;
+      --border:    rgba(108,93,211,0.25);
+      --font-ui:   'Segoe UI', sans-serif;
+      --font-mono: 'Consolas', monospace;
+    }
+
+    html, body {
+      width: 100vw; height: 100vh; overflow: hidden;
+      background: transparent; color: var(--text);
+      font-family: var(--font-ui); user-select: none; cursor: none;
+    }
+
+    #cursor {
+      position: fixed; width: 8px; height: 8px; border-radius: 50%;
+      background: rgba(255,255,255,0.4); pointer-events: none;
+      z-index: 9999; transform: translate(-50%,-50%);
+    }
+
+    /* ── ORB WRAP ── */
+    #orb-wrap { position: fixed; z-index: 200; pointer-events: none; will-change: left,top; }
+    #orb { width: var(--orb-size); height: var(--orb-size); border-radius: 50%; position: relative; pointer-events: all; cursor: grab; }
+    #orb:active { cursor: grabbing; }
+
+    /* ═══════════════════════════════════
+       SKIN: BALL — Chrome Metallic
+    ═══════════════════════════════════ */
+    body[data-skin="ball"] .orb-core {
+      width: 100%; height: 100%; border-radius: 50%;
+      background:
+        radial-gradient(circle at 28% 26%, rgba(255,255,255,1) 0%, rgba(255,255,255,0.6) 4%, transparent 18%),
+        radial-gradient(circle at 68% 72%, rgba(255,255,255,0.2) 0%, transparent 16%),
+        radial-gradient(circle at 38% 35%,
+          var(--orb-glow) 0%,
+          var(--orb-color) 35%,
+          var(--orb-dark) 65%,
+          rgba(0,0,0,0.95) 100%);
+      position: relative; transform-origin: center;
+      box-shadow:
+        inset -5px -5px 14px rgba(0,0,0,0.7),
+        inset 3px 3px 8px rgba(255,255,255,0.2),
+        inset 0 0 20px rgba(0,0,0,0.3);
+    }
+    body[data-skin="ball"] .orb-shine {
+      position: absolute; top: 12%; left: 16%;
+      width: 40%; height: 26%;
+      background: radial-gradient(ellipse, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.5) 40%, transparent 75%);
+      border-radius: 50%; opacity: 0.95; filter: blur(0.5px);
+    }
+    body[data-skin="ball"] .orb-glow-bg {
+      position: absolute; inset: -22px; border-radius: 50%;
+      background: radial-gradient(circle, var(--orb-color) 0%, transparent 70%);
+      opacity: 0.28; z-index: -1; pointer-events: none;
+    }
+    body[data-skin="ball"] .orb-shadow {
+      position: absolute; bottom: -12px; left: 50%;
+      transform: translateX(-50%); width: 70%; height: 10px;
+      background: var(--orb-color); border-radius: 50%;
+      opacity: 0.2; filter: blur(8px);
+    }
+    body[data-skin="ball"] .spirit-layer { display: none; }
+
+    /* ═══════════════════════════════════
+       SKIN: SPIRIT — Plasma Energy
+    ═══════════════════════════════════ */
+    body[data-skin="spirit"] .orb-core {
+      width: 100%; height: 100%; border-radius: 50%;
+      background: transparent; position: relative; transform-origin: center;
+    }
+    body[data-skin="spirit"] .orb-shine  { display: none; }
+    body[data-skin="spirit"] .orb-shadow { display: none; }
+    body[data-skin="spirit"] .orb-glow-bg {
+      position: absolute; inset: -32px; border-radius: 50%;
+      background: radial-gradient(circle, var(--orb-color) 0%, var(--orb-glow) 30%, transparent 65%);
+      opacity: 0.4; z-index: -1; pointer-events: none;
+      animation: spirit-breathe 2.8s ease-in-out infinite;
+    }
+    .spirit-layer { position: absolute; border-radius: 50%; pointer-events: none; }
+    .spirit-core {
+      inset: 15%; border-radius: 50%;
+      background: radial-gradient(circle, white 0%, var(--orb-glow) 35%, var(--orb-color) 65%, transparent 80%);
+      opacity: 0.65; animation: spirit-core-pulse 2s ease-in-out infinite;
+    }
+    .spirit-ring1 { inset: -2px; border: 2px solid var(--orb-glow); opacity: 0; animation: spirit-ripple 2.2s ease-out infinite; }
+    .spirit-ring2 { inset: -2px; border: 1px solid var(--orb-color); opacity: 0; animation: spirit-ripple 2.2s ease-out infinite 0.7s; }
+    .spirit-ring3 { inset: -2px; border: 1px solid var(--orb-glow); opacity: 0; animation: spirit-ripple 2.2s ease-out infinite 1.4s; }
+    .spirit-wisp1 { width:45%; height:45%; top:5%; left:20%; background: radial-gradient(circle, var(--orb-glow) 0%, transparent 70%); opacity:.45; animation:wisp-float1 3s ease-in-out infinite; filter:blur(3px); }
+    .spirit-wisp2 { width:35%; height:35%; bottom:10%; right:15%; background: radial-gradient(circle, var(--orb-color) 0%, transparent 70%); opacity:.4; animation:wisp-float2 3.5s ease-in-out infinite; filter:blur(3px); }
+    .spirit-wisp3 { width:25%; height:25%; top:30%; right:8%; background: radial-gradient(circle, white 0%, transparent 70%); opacity:.35; animation:wisp-float3 2.8s ease-in-out infinite; filter:blur(2px); }
+
+    /* ── STATE ANIMATIONS ── */
+    body[data-skin="ball"][data-state="idle"]     .orb-core { animation: breathe 3.5s ease-in-out infinite; }
+    body[data-skin="ball"][data-state="thinking"] .orb-core { animation: thinking 1.5s linear infinite; }
+    body[data-skin="ball"][data-state="thinking"] .orb-glow-bg { opacity: 0.5; animation: glow-pulse 0.8s ease-in-out infinite; }
+    body[data-skin="ball"][data-state="speaking"] .orb-core { animation: speaking 0.4s ease-in-out infinite alternate; }
+    body[data-skin="ball"][data-state="speaking"] .orb-glow-bg { opacity: 0.55; }
+    body[data-skin="spirit"][data-state="idle"]     .orb-glow-bg { animation: spirit-breathe 2.8s ease-in-out infinite; }
+    body[data-skin="spirit"][data-state="thinking"] .spirit-core { animation: spirit-think 0.6s linear infinite; }
+    body[data-skin="spirit"][data-state="thinking"] .orb-glow-bg { opacity: 0.65; animation: spirit-breathe 0.6s ease-in-out infinite; }
+    body[data-skin="spirit"][data-state="thinking"] .spirit-ring1 { animation: spirit-ripple 0.8s ease-out infinite; }
+    body[data-skin="spirit"][data-state="thinking"] .spirit-ring2 { animation: spirit-ripple 0.8s ease-out infinite 0.26s; }
+    body[data-skin="spirit"][data-state="thinking"] .spirit-ring3 { animation: spirit-ripple 0.8s ease-out infinite 0.52s; }
+    body[data-skin="spirit"][data-state="speaking"] .spirit-core { animation: spirit-speak 0.3s ease-in-out infinite alternate; opacity: 0.95; }
+    body[data-skin="spirit"][data-state="speaking"] .orb-glow-bg { opacity: 0.75; }
+
+    @keyframes breathe           { 0%,100%{transform:scale(1);opacity:.9} 50%{transform:scale(1.06);opacity:1} }
+    @keyframes thinking          { 0%{filter:hue-rotate(0deg) brightness(1)} 50%{filter:hue-rotate(45deg) brightness(1.35)} 100%{filter:hue-rotate(0deg) brightness(1)} }
+    @keyframes speaking          { from{transform:scale(1)} to{transform:scale(1.1)} }
+    @keyframes glow-pulse        { 0%,100%{opacity:.28} 50%{opacity:.58} }
+    @keyframes spirit-breathe    { 0%,100%{opacity:.3;transform:scale(1)} 50%{opacity:.5;transform:scale(1.1)} }
+    @keyframes spirit-ripple     { 0%{transform:scale(0.8);opacity:0.8} 100%{transform:scale(2.4);opacity:0} }
+    @keyframes spirit-core-pulse { 0%,100%{opacity:.55;transform:scale(0.92)} 50%{opacity:.75;transform:scale(1.06)} }
+    @keyframes spirit-think      { 0%{filter:hue-rotate(0deg) brightness(1.3)} 100%{filter:hue-rotate(90deg) brightness(1.7)} }
+    @keyframes spirit-speak      { from{transform:scale(0.88);opacity:.6} to{transform:scale(1.18);opacity:1} }
+    @keyframes wisp-float1       { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(4px,-3px) scale(1.12)} 66%{transform:translate(-3px,2px) scale(0.9)} }
+    @keyframes wisp-float2       { 0%,100%{transform:translate(0,0) scale(1)} 40%{transform:translate(-4px,3px) scale(1.12)} 70%{transform:translate(3px,-2px) scale(0.9)} }
+    @keyframes wisp-float3       { 0%,100%{transform:translate(0,0)} 50%{transform:translate(2px,-4px)} }
+
+    /* ═══════════════════════════════════
+       SKIN: CUBE — Gunmetal Metallic
+    ═══════════════════════════════════ */
+    body[data-skin="cube"] .orb-core {
+      width: 100%; height: 100%; border-radius: 0; position: relative;
+      clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+      background:
+        radial-gradient(circle at 30% 25%, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.3) 6%, transparent 18%),
+        linear-gradient(145deg,
+          #c8c8d8 0%,
+          #8890a8 12%,
+          var(--orb-glow) 25%,
+          var(--orb-color) 48%,
+          #1a1a2e 72%,
+          #0a0a14 100%);
+      box-shadow:
+        inset -6px -8px 16px rgba(0,0,0,0.85),
+        inset 5px 5px 12px rgba(255,255,255,0.25),
+        inset 0 0 24px rgba(0,0,0,0.4);
+      animation: cube-float 6s ease-in-out infinite;
+      filter: drop-shadow(0 0 6px var(--orb-color));
+    }
+    body[data-skin="cube"] .orb-shine {
+      position: absolute; top: 6%; left: 28%;
+      width: 35%; height: 20%;
+      background: linear-gradient(140deg, rgba(255,255,255,0.98) 0%, rgba(200,210,255,0.6) 40%, transparent 70%);
+      opacity: 0.85; filter: blur(0.5px);
+      clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    }
+    body[data-skin="cube"] .spirit-layer { display: none; }
+    body[data-skin="cube"] .orb-glow-bg {
+      position: absolute; inset: -20px;
+      clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+      background: var(--orb-color); opacity: 0.22;
+      z-index: -1; filter: blur(14px);
+    }
+    body[data-skin="cube"] .orb-shadow {
+      position: absolute; bottom: -14px; left: 50%;
+      transform: translateX(-50%); width: 75%; height: 8px;
+      background: var(--orb-color); opacity: 0.18; filter: blur(10px);
+    }
+    body[data-skin="cube"][data-state="idle"]     .orb-core { animation: cube-float 6s ease-in-out infinite; }
+    body[data-skin="cube"][data-state="thinking"] .orb-core { animation: cube-spin 1.2s linear infinite; filter: brightness(1.5) saturate(1.3) drop-shadow(0 0 10px var(--orb-glow)); }
+    body[data-skin="cube"][data-state="speaking"] .orb-core { animation: cube-spin 0.5s linear infinite; filter: brightness(1.8) drop-shadow(0 0 16px var(--orb-glow)); }
+    @keyframes cube-float { 0%,100%{transform:rotate(0deg) scale(1)} 25%{transform:rotate(10deg) scale(1.05)} 75%{transform:rotate(-8deg) scale(0.97)} }
+    @keyframes cube-spin  { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+
+    /* ═══════════════════════════════════
+       SKIN: TETRA — Molten Metal Pyramid
+    ═══════════════════════════════════ */
+    body[data-skin="tetra"] .orb-core {
+      width: 100%; height: 100%; border-radius: 0; position: relative;
+      clip-path: polygon(50% 2%, 98% 92%, 2% 92%);
+      background:
+        radial-gradient(circle at 50% 12%, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.4) 5%, transparent 14%),
+        linear-gradient(170deg,
+          #e8d5b0 0%,
+          #c8a060 8%,
+          var(--orb-glow) 18%,
+          var(--orb-color) 50%,
+          #1a0a00 78%,
+          #0a0500 100%);
+      box-shadow:
+        inset -4px -10px 18px rgba(0,0,0,0.9),
+        inset 3px 2px 8px rgba(255,220,140,0.3),
+        inset 0 0 20px rgba(0,0,0,0.5);
+      animation: tetra-float 5s ease-in-out infinite;
+      filter: drop-shadow(0 0 8px var(--orb-color));
+    }
+    body[data-skin="tetra"] .orb-shine {
+      position: absolute; top: 4%; left: 38%;
+      width: 16%; height: 32%;
+      background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,220,140,0.5) 50%, transparent 100%);
+      opacity: 0.9; filter: blur(0.5px);
+    }
+    body[data-skin="tetra"] .spirit-layer { display: none; }
+    body[data-skin="tetra"] .orb-glow-bg {
+      position: absolute; inset: -16px;
+      background: radial-gradient(ellipse at 50% 85%, var(--orb-color) 0%, transparent 60%);
+      opacity: 0.28; z-index: -1; filter: blur(14px);
+    }
+    body[data-skin="tetra"] .orb-shadow {
+      position: absolute; bottom: 4%; left: 50%;
+      transform: translateX(-50%); width: 85%; height: 6px;
+      background: var(--orb-color); opacity: 0.22; filter: blur(8px);
+    }
+    body[data-skin="tetra"][data-state="idle"]     .orb-core { animation: tetra-float 5s ease-in-out infinite; }
+    body[data-skin="tetra"][data-state="thinking"] .orb-core { animation: tetra-spin 1.6s ease-in-out infinite; filter: brightness(1.5) drop-shadow(0 0 12px var(--orb-glow)); }
+    body[data-skin="tetra"][data-state="speaking"] .orb-core { animation: tetra-float 0.35s ease-in-out infinite; filter: brightness(1.8) saturate(1.5); }
+    @keyframes tetra-float { 0%,100%{transform:scale(1) rotate(0deg)} 33%{transform:scale(1.06) rotate(4deg)} 66%{transform:scale(0.97) rotate(-3deg)} }
+    @keyframes tetra-spin  { 0%,100%{transform:rotate(0deg) scale(1)} 50%{transform:rotate(180deg) scale(1.12)} }
+
+    /* ═══════════════════════════════════
+       SKIN: DIAMOND — Ice Crystal
+    ═══════════════════════════════════ */
+    body[data-skin="diamond"] .orb-core {
+      width: 100%; height: 100%; border-radius: 0;
+      clip-path: polygon(50% 0%, 100% 42%, 78% 100%, 22% 100%, 0% 42%);
+      background:
+        radial-gradient(circle at 35% 20%, rgba(255,255,255,1) 0%, rgba(220,240,255,0.7) 8%, transparent 22%),
+        radial-gradient(circle at 65% 70%, rgba(255,255,255,0.3) 0%, transparent 15%),
+        linear-gradient(130deg,
+          #d0e8ff 0%,
+          #a0c8f0 10%,
+          var(--orb-glow) 22%,
+          var(--orb-color) 42%,
+          rgba(200,230,255,0.15) 58%,
+          var(--orb-dark) 72%,
+          rgba(0,0,30,0.95) 100%);
+      position: relative;
+      box-shadow:
+        inset -5px -6px 16px rgba(0,0,60,0.8),
+        inset 4px 4px 10px rgba(180,220,255,0.4),
+        inset 0 0 20px rgba(100,160,255,0.1);
+      animation: diamond-float 4s ease-in-out infinite;
+      filter: drop-shadow(0 0 8px var(--orb-glow));
+    }
+    body[data-skin="diamond"] .orb-shine {
+      position: absolute; top: 4%; left: 22%;
+      width: 38%; height: 28%;
+      background: radial-gradient(ellipse, rgba(255,255,255,1) 0%, rgba(200,230,255,0.7) 45%, transparent 75%);
+      opacity: 0.92; filter: blur(0.5px);
+      clip-path: polygon(50% 0%, 100% 42%, 78% 100%, 22% 100%, 0% 42%);
+    }
+    body[data-skin="diamond"] .spirit-layer { display: none; }
+    body[data-skin="diamond"] .orb-glow-bg {
+      position: absolute; inset: -20px;
+      clip-path: polygon(50% 0%, 100% 42%, 78% 100%, 22% 100%, 0% 42%);
+      background: var(--orb-glow); opacity: 0.25;
+      z-index: -1; filter: blur(16px);
+      animation: diamond-float 4s ease-in-out infinite;
+    }
+    body[data-skin="diamond"] .orb-shadow {
+      position: absolute; bottom: -10px; left: 50%;
+      transform: translateX(-50%); width: 65%; height: 6px;
+      background: var(--orb-color); opacity: 0.2; filter: blur(8px);
+    }
+    body[data-skin="diamond"][data-state="idle"]     .orb-core { animation: diamond-float 4s ease-in-out infinite; }
+    body[data-skin="diamond"][data-state="thinking"] .orb-core { animation: diamond-spin 1s linear infinite; filter: brightness(1.6) saturate(1.5) drop-shadow(0 0 14px var(--orb-glow)); }
+    body[data-skin="diamond"][data-state="speaking"] .orb-core { animation: diamond-spin 0.4s linear infinite; filter: brightness(2) saturate(1.8); }
+    @keyframes diamond-float { 0%,100%{transform:scale(1) rotate(0deg)} 50%{transform:scale(1.07) rotate(7deg)} }
+    @keyframes diamond-spin  { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+
+    /* ═══════════════════════════════════
+       SKIN: TORUS — Polished Steel Ring
+    ═══════════════════════════════════ */
+    body[data-skin="torus"] .orb-core {
+      width: 100%; height: 100%; border-radius: 50%;
+      background: transparent; position: relative;
+      border: 12px solid var(--orb-color);
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.15),
+        0 0 0 13px rgba(0,0,0,0.3),
+        0 0 28px var(--orb-color),
+        0 0 50px rgba(108,93,211,0.2),
+        inset 0 4px 8px rgba(255,255,255,0.25),
+        inset 0 -4px 8px rgba(0,0,0,0.6);
+      animation: torus-float 4s ease-in-out infinite;
+    }
+    body[data-skin="torus"] .orb-shine {
+      position: absolute; top: 6%; left: 50%;
+      transform: translateX(-50%);
+      width: 45%; height: 14%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.95), transparent);
+      border-radius: 50%; opacity: 0.75; filter: blur(0.5px);
+    }
+    body[data-skin="torus"] .spirit-layer { display: none; }
+    body[data-skin="torus"] .orb-glow-bg {
+      position: absolute; inset: -24px; border-radius: 50%;
+      background: radial-gradient(circle, transparent 30%, var(--orb-color) 42%, var(--orb-glow) 50%, transparent 60%);
+      opacity: 0.4; z-index: -1;
+      animation: torus-float 4s ease-in-out infinite;
+    }
+    body[data-skin="torus"] .orb-shadow {
+      position: absolute; bottom: -14px; left: 50%;
+      transform: translateX(-50%); width: 80%; height: 6px;
+      background: var(--orb-color); opacity: 0.18; filter: blur(10px);
+      border-radius: 50%;
+    }
+    body[data-skin="torus"][data-state="idle"]     .orb-core { animation: torus-float 4s ease-in-out infinite; }
+    body[data-skin="torus"][data-state="thinking"] .orb-core { animation: torus-spin 0.8s linear infinite; box-shadow: 0 0 0 1px rgba(255,255,255,0.2), 0 0 35px var(--orb-glow), inset 0 4px 8px rgba(255,255,255,0.3); }
+    body[data-skin="torus"][data-state="speaking"] .orb-core { animation: torus-spin 0.3s linear infinite; filter: brightness(1.6); box-shadow: 0 0 0 1px rgba(255,255,255,0.3), 0 0 50px var(--orb-glow); }
+    @keyframes torus-float { 0%,100%{transform:scale(1) rotateX(0deg)} 50%{transform:scale(1.06) rotateX(14deg)} }
+    @keyframes torus-spin  { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+
+
+    /* ── TRAIL ── */
+    .trail-dot { position: fixed; border-radius: 50%; pointer-events: none; z-index: 90; transform: translate(-50%,-50%); background: var(--orb-glow); }
+
+    /* ── SMALL BUBBLE ── */
+    #bubble {
+      position: fixed; z-index: 300; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 12px;
+      padding: 9px 14px; font-family: var(--font-mono); font-size: 12px;
+      color: var(--orb-glow); max-width: 240px; line-height: 1.5;
+      pointer-events: none; opacity: 0; transition: opacity 0.2s; white-space: nowrap;
+    }
+    #bubble.show { opacity: 1; }
+    #bubble::after { content: ''; position: absolute; bottom: -6px; left: 18px; width: 10px; height: 10px; background: var(--surface); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); transform: rotate(45deg); }
+
+    /* ── RESPONSE BUBBLE ── */
+    #response-bubble {
+      position: fixed; z-index: 350; width: 320px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; overflow: hidden;
+      opacity: 0; pointer-events: none;
+      transform: scale(0.92) translateY(8px);
+      transition: opacity .22s, transform .22s cubic-bezier(0.34,1.4,0.64,1);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+    #response-bubble.show { opacity: 1; pointer-events: all; transform: scale(1) translateY(0); }
+    #response-bubble-bar { height: 2px; width: 100%; background: var(--orb-color); opacity: 0.6; }
+    #response-bubble-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px 8px; border-bottom: 1px solid var(--border); }
+    #response-bubble-title { font-size: 12px; font-family: var(--font-mono); color: var(--orb-glow); letter-spacing: 1px; text-transform: uppercase; }
+    #response-bubble-close { background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 13px; padding: 2px 4px; border-radius: 4px; transition: all .15s; }
+    #response-bubble-close:hover { background: rgba(255,255,255,.08); color: var(--text); }
+    #response-bubble-body { padding: 12px 14px; font-size: 13px; line-height: 1.7; color: var(--text); max-height: 200px; overflow-y: auto; white-space: pre-wrap; }
+    #response-bubble-footer { display: flex; align-items: center; justify-content: space-between; padding: 6px 14px 10px; border-top: 1px solid var(--border); }
+    #response-bubble-source { font-size: 10px; font-family: var(--font-mono); color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px; }
+    #response-bubble-copy { background: transparent; border: 1px solid var(--border); border-radius: 6px; padding: 3px 10px; font-size: 11px; color: var(--text-muted); cursor: pointer; transition: all .15s; }
+    #response-bubble-copy:hover { border-color: var(--orb-color); color: var(--orb-glow); }
+
+    .typing-cursor { display: inline-block; width: 2px; height: 14px; background: var(--orb-glow); margin-left: 2px; vertical-align: middle; animation: blink .7s ease-in-out infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    /* ── WAKE ANIMATIONS ── */
+    .wake-ring {
+      position: fixed; border-radius: 50%;
+      border: 2px solid var(--orb-glow);
+      pointer-events: none; z-index: 199;
+      transform: translate(-50%, -50%) scale(0);
+      opacity: 0;
+    }
+    .wake-particle {
+      position: fixed; width: 6px; height: 6px;
+      border-radius: 50%; background: var(--orb-glow);
+      pointer-events: none; z-index: 199;
+      transform: translate(-50%, -50%);
+    }
+    #wake-shockwave {
+      position: fixed; inset: 0; z-index: 198;
+      pointer-events: none; opacity: 0; border-radius: 0;
+      background: radial-gradient(circle at 50% 50%, rgba(108,93,211,0.18) 0%, transparent 65%);
+      transform: scale(0);
+    }
+    @keyframes wake-ring-burst {
+      0%   { transform: translate(-50%,-50%) scale(0.2); opacity: 0.9; }
+      100% { transform: translate(-50%,-50%) scale(var(--ring-scale, 4)); opacity: 0; }
+    }
+    @keyframes wake-particle-fly {
+      0%   { opacity: 1; transform: translate(-50%,-50%) translate(0,0) scale(1); }
+      100% { opacity: 0; transform: translate(-50%,-50%) translate(var(--px,40px), var(--py,-40px)) scale(0); }
+    }
+    @keyframes wake-shockwave {
+      0%   { opacity: 0.6; transform: scale(0.3); }
+      100% { opacity: 0;   transform: scale(2.5); }
+    }
+    @keyframes wake-materialize {
+      0%   { opacity: 0; transform: scale(0.05); filter: blur(14px); }
+      60%  { opacity: 1; transform: scale(1.18); filter: blur(0); }
+      100% { opacity: 1; transform: scale(1);    filter: blur(0); }
+    }
+    @keyframes wake-powerup {
+      0%   { transform: scale(0.05); filter: brightness(4) blur(8px); }
+      50%  { transform: scale(1.25); filter: brightness(2) blur(0); }
+      100% { transform: scale(1);    filter: brightness(1) blur(0); }
+    }
+
+
+    /* ── PANEL — SHARP HIGH-TECH ── */
+    #panel { position: fixed; z-index: 400; width: 300px; background: var(--surface); border: 1px solid var(--border); border-radius: 0; padding: 16px; opacity: 0; pointer-events: none; transform: scale(0.92); transition: opacity .22s, transform .22s cubic-bezier(0.34,1.4,0.64,1); clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px)); }
+    #panel.visible { opacity: 1; pointer-events: all; transform: scale(1); }
+    .panel-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+    .panel-title { font-size: 11px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--orb-glow); font-family: var(--font-mono); }
+    .panel-header-right { display: flex; gap: 7px; align-items: center; }
+    #freeze-btn { background: transparent; border: 1px solid var(--border); border-radius: 0; padding: 3px 10px; font-family: var(--font-mono); font-size: 10px; color: var(--orb-glow); cursor: pointer; letter-spacing: 2px; transition: all .15s; text-transform: uppercase; clip-path: polygon(4px 0%,100% 0%,calc(100% - 4px) 100%,0% 100%); }
+    .status-badge { font-size: 10px; font-family: var(--font-mono); padding: 3px 8px; border-radius: 0; background: rgba(108,93,211,.15); border: 1px solid var(--border); color: var(--orb-glow); text-transform: uppercase; letter-spacing: 2px; clip-path: polygon(6px 0%,100% 0%,calc(100% - 6px) 100%,0% 100%); }
+    .section-label { font-size: 9px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 7px; font-family: var(--font-mono); }
+    .gap { margin-bottom: 13px; }
+    .toggle-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .toggle-label { font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); letter-spacing: 1px; }
+    .toggle { width: 32px; height: 18px; border-radius: 0; background: var(--surface2); border: 1px solid var(--border); cursor: pointer; position: relative; transition: background .2s; flex-shrink: 0; clip-path: polygon(3px 0%,100% 0%,calc(100% - 3px) 100%,0% 100%); }
+    .toggle.on { background: var(--orb-color); border-color: var(--orb-color); }
+    .toggle::after { content: ''; position: absolute; width: 12px; height: 12px; border-radius: 0; background: white; top: 2px; left: 2px; transition: transform .2s; }
+    .toggle.on::after { transform: translateX(14px); }
+    .section-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .section-row label { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-muted); min-width: 55px; font-family: var(--font-mono); }
+    .section-row input[type=range] { flex: 1; accent-color: var(--orb-color); cursor: pointer; }
+    .val-out { font-family: var(--font-mono); font-size: 11px; color: var(--orb-glow); min-width: 28px; text-align: right; }
+    .color-grid { display: flex; gap: 7px; margin-bottom: 12px; flex-wrap: wrap; }
+    .color-swatch { width: 22px; height: 22px; border-radius: 0; cursor: pointer; border: 1px solid transparent; transition: transform .15s, border-color .15s; clip-path: polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%); }
+    .color-swatch:hover { transform: scale(1.2); }
+    .color-swatch.active { border-color: white; transform: scale(1.15); outline: 1px solid var(--orb-glow); outline-offset: 2px; }
+    .action-row { display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
+    .action-btn { flex: 1; padding: 7px 8px; border-radius: 0; border: 1px solid var(--border); background: transparent; color: var(--text-muted); font-family: var(--font-mono); font-size: 10px; font-weight: 600; cursor: pointer; transition: all .15s; letter-spacing: 1.5px; text-transform: uppercase; min-width: 60px; clip-path: polygon(4px 0%,100% 0%,calc(100% - 4px) 100%,0% 100%); }
+    .action-btn:hover { background: rgba(108,93,211,.15); border-color: var(--orb-color); color: var(--orb-glow); }
+    .action-btn.primary { background: var(--orb-color); border-color: var(--orb-color); color: white; }
+    .action-btn.primary:hover { filter: brightness(1.15); }
+    .action-btn.danger { color: #f09b7a; border-color: rgba(240,155,122,0.3); }
+    .action-btn.danger:hover { background: rgba(216,90,48,.15); border-color: #D85A30; }
+
+    /* skin selector */
+    .skin-grid { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+    .skin-btn { flex: 1; padding: 7px 6px; border-radius: 0; border: 1px solid var(--border); background: var(--surface2); color: var(--text-muted); font-family: var(--font-mono); font-size: 10px; cursor: pointer; transition: all .15s; text-align: center; letter-spacing: 1px; text-transform: uppercase; min-width: 50px; clip-path: polygon(4px 0%,100% 0%,calc(100% - 4px) 100%,0% 100%); }
+    .skin-btn:hover { border-color: var(--orb-color); color: var(--text); }
+    .skin-btn.active { background: var(--orb-color); border-color: var(--orb-color); color: white; }
+
+    /* ── SELECTION TOOLBAR — SHARP ── */
+    #sel-toolbar { position: fixed; z-index: 500; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--border); border-radius: 0; overflow: hidden; opacity: 0; pointer-events: none; transform: translateY(6px); transition: opacity .18s, transform .18s cubic-bezier(0.34,1.4,0.64,1); clip-path: polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px)); }
+    #sel-toolbar.show { opacity: 1; pointer-events: all; transform: translateY(0); }
+    .sel-btns { display: flex; gap: 4px; align-items: center; padding: 5px 7px; }
+    .sel-btn { display: flex; align-items: center; gap: 4px; padding: 5px 10px; border-radius: 0; border: 1px solid var(--border); background: var(--surface2); color: var(--text-muted); font-family: var(--font-mono); font-size: 10px; font-weight: 600; cursor: pointer; transition: all .15s; white-space: nowrap; letter-spacing: 1px; text-transform: uppercase; clip-path: polygon(4px 0%,100% 0%,calc(100% - 4px) 100%,0% 100%); }
+    .sel-btn:hover { border-color: var(--orb-color); background: rgba(108,93,211,0.15); color: var(--orb-glow); }
+    .sel-btn.read:hover   { border-color: #1D9E75; background: rgba(29,158,117,0.12); color: #5ee6c4; }
+    .sel-btn.fix:hover    { border-color: #D85A30; background: rgba(216,90,48,0.12);  color: #f09b7a; }
+    .sel-btn.answer:hover { border-color: #9b59b6; background: rgba(155,89,182,0.12); color: #d7aefb; }
+    .sel-btn.search:hover { border-color: #2980b9; background: rgba(41,128,185,0.12); color: #85c1e9; }
+    .sel-divider { width: 1px; height: 16px; background: var(--border); margin: 0 1px; flex-shrink: 0; }
+    #toolbar-bar { height: 1px; width: 100%; background: var(--orb-color); opacity: 0.6; }
+
+    /* ── AI MODAL — SHARP ── */
+    #ai-modal { position: fixed; z-index: 600; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.6); opacity: 0; pointer-events: none; transition: opacity .2s; }
+    #ai-modal.show { opacity: 1; pointer-events: all; }
+    .modal-box { background: var(--surface); border: 1px solid var(--border); border-radius: 0; width: min(560px,90vw); max-height: 80vh; display: flex; flex-direction: column; overflow: hidden; transform: scale(0.94) translateY(12px); transition: transform .22s cubic-bezier(0.34,1.3,0.64,1); clip-path: polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,16px 100%,0 calc(100% - 16px)); }
+    #ai-modal.show .modal-box { transform: scale(1) translateY(0); }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .modal-title { font-size: 11px; font-weight: 700; letter-spacing: 3px; color: var(--orb-glow); text-transform: uppercase; font-family: var(--font-mono); }
+    .modal-model { font-size: 9px; font-family: var(--font-mono); color: var(--text-muted); margin-left: 8px; letter-spacing: 1px; }
+    .modal-close { width: 24px; height: 24px; border-radius: 0; border: 1px solid var(--border); background: transparent; color: var(--text-muted); cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; transition: all .15s; clip-path: polygon(4px 0%,100% 0%,calc(100% - 4px) 100%,0% 100%); }
+    .modal-close:hover { background: rgba(255,255,255,.07); color: var(--text); }
+    .modal-selection { margin: 12px 16px 0; padding: 8px 10px; background: var(--surface2); border-radius: 0; border-left: 2px solid var(--orb-color); font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); max-height: 80px; overflow-y: auto; line-height: 1.6; flex-shrink: 0; }
+    .modal-body { padding: 12px 16px; overflow-y: auto; flex: 1; }
+    .modal-response { font-family: var(--font-ui); font-size: 13px; line-height: 1.7; color: var(--text); white-space: pre-wrap; }
+    .modal-response.code { font-family: var(--font-mono); font-size: 12px; background: var(--surface2); border-radius: 0; padding: 12px; color: #5ee6c4; border-left: 2px solid var(--orb-color); }
+    .modal-loading { display: flex; align-items: center; gap: 10px; color: var(--text-muted); font-family: var(--font-mono); font-size: 11px; letter-spacing: 1px; }
+    .dots span { display: inline-block; width: 5px; height: 5px; border-radius: 0; background: var(--orb-glow); margin: 0 2px; animation: dot-bounce 1.2s ease-in-out infinite; }
+    .dots span:nth-child(2){animation-delay:.2s} .dots span:nth-child(3){animation-delay:.4s}
+    @keyframes dot-bounce { 0%,80%,100%{transform:scale(.5);opacity:.4} 40%{transform:scale(1);opacity:1} }
+    .modal-footer { padding: 8px 16px 12px; border-top: 1px solid var(--border); display: flex; gap: 6px; flex-shrink: 0; }
+    .modal-action { flex: 1; padding: 7px; border-radius: 0; border: 1px solid var(--border); background: transparent; color: var(--text-muted); font-family: var(--font-mono); font-size: 10px; font-weight: 600; cursor: pointer; transition: all .15s; letter-spacing: 1.5px; text-transform: uppercase; clip-path: polygon(4px 0%,100% 0%,calc(100% - 4px) 100%,0% 100%); }
+    .modal-action:hover { background: rgba(108,93,211,.15); border-color: var(--orb-color); color: var(--orb-glow); }
+    .modal-action.primary { background: var(--orb-color); border-color: var(--orb-color); color: white; }
+
+    /* ── KNOWLEDGE PANEL ── */
+    #knowledge-panel {
+      position: fixed; z-index: 400; width: 320px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 0; padding: 16px;
+      opacity: 0; pointer-events: none; transform: scale(0.92);
+      transition: opacity .22s, transform .22s cubic-bezier(0.34,1.4,0.64,1);
+      clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+    }
+    #knowledge-panel.visible { opacity: 1; pointer-events: all; transform: scale(1); }
+
+    /* ── CHAT BUBBLE ── */
+    /* ── CHAT BUBBLE — COMPACT WITH TOGGLE ── */
+    #chat-bubble {
+      position: fixed; z-index: 450;
+      width: 300px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 0;
+      overflow: hidden;
+      opacity: 0; pointer-events: none;
+      transform: scale(0.92) translateY(8px);
+      transition: opacity .22s, transform .22s cubic-bezier(0.34,1.4,0.64,1);
+      display: flex; flex-direction: column;
+      clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+    }
+    #chat-bubble.show { opacity: 1; pointer-events: all; transform: scale(1) translateY(0); }
+
+    /* Header — always visible */
+    #chat-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 10px 6px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface2);
+    }
+
+    /* Messages — hidden by default, shown when expanded */
+    #chat-messages {
+      max-height: 0; overflow: hidden;
+      display: flex; flex-direction: column; gap: 8px;
+      padding: 0 12px;
+      transition: max-height 0.3s ease, padding 0.3s ease;
+    }
+    #chat-bubble.expanded #chat-messages {
+      max-height: 280px; overflow-y: auto;
+      padding: 12px;
+    }
+
+    .chat-msg {
+      max-width: 88%; padding: 7px 11px;
+      border-radius: 0; font-size: 12px; line-height: 1.6;
+      animation: msg-in .2s ease; font-family: var(--font-ui);
+      flex-shrink: 0;
+    }
+    @keyframes msg-in { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+    .chat-msg.user {
+      background: var(--orb-color); color: white;
+      align-self: flex-end;
+      clip-path: polygon(0 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%);
+    }
+    .chat-msg.aibo {
+      background: var(--surface2); color: var(--text);
+      align-self: flex-start; border: 1px solid var(--border);
+      clip-path: polygon(0 0, 100% 0, 100% 100%, 5px 100%, 0 calc(100% - 5px));
+    }
+    .chat-msg.aibo.typing { display: flex; align-items: center; gap: 6px; }
+
+    /* Input row */
+    #chat-input-row {
+      display: flex; gap: 6px; align-items: center;
+      padding: 8px 10px;
+      border-top: 1px solid var(--border);
+    }
+    #chat-input {
+      flex: 1; background: transparent; border: none; outline: none;
+      color: var(--text); font-family: var(--font-mono); font-size: 12px;
+      padding: 4px 6px; letter-spacing: 0.5px;
+    }
+    #chat-input::placeholder { color: var(--text-muted); }
+    #chat-send-btn, #chat-voice-btn {
+      background: transparent; border: none;
+      color: var(--orb-glow); cursor: pointer;
+      font-size: 14px; padding: 4px 6px; flex-shrink: 0;
+      transition: all .15s;
+    }
+    #chat-send-btn:hover, #chat-voice-btn:hover { color: white; }
+    #chat-voice-btn.recording { color: #f09b7a; animation: pulse-listen 0.8s infinite; }
+    #chat-voice-status {
+      font-size: 10px; font-family: var(--font-mono);
+      color: var(--text-muted); text-align: center;
+      padding: 0 10px 4px; min-height: 14px; letter-spacing: 1px;
+    }
+    #chat-messages::-webkit-scrollbar { width: 3px; }
+    #chat-messages::-webkit-scrollbar-track { background: transparent; }
+    #chat-messages::-webkit-scrollbar-thumb { background: var(--orb-color); }
+
+    /* ── TASK PANEL — SHARP ── */
+    #task-panel {
+      position: fixed; z-index: 400; width: 320px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 0; padding: 16px;
+      opacity: 0; pointer-events: none; transform: scale(0.92);
+      transition: opacity .22s, transform .22s cubic-bezier(0.34,1.4,0.64,1);
+      clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+    }
+    #task-panel.visible { opacity: 1; pointer-events: all; transform: scale(1); }
+    #task-input:focus { border-color: var(--orb-color) !important; border-radius: 0 !important; }
+    #task-input::placeholder { color: var(--text-muted); opacity: 0.7; }
+    #task-input { border-radius: 0 !important; font-family: var(--font-mono) !important; font-size: 12px !important; }
+
+    ::-webkit-scrollbar { width: 3px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--orb-color); border-radius: 0; }
+  </style>
+</head>
+<body data-state="idle" data-skin="ball">
+
+  <div id="cursor"></div>
+
+  <!-- Orb -->
+  <div id="orb-wrap">
+    <div id="orb">
+      <div class="orb-glow-bg"></div>
+      <div class="orb-core">
+        <div class="orb-shine"></div>
+        <!-- Spirit layers (hidden in ball mode) -->
+        <div class="spirit-layer spirit-core"></div>
+        <div class="spirit-layer spirit-wisp1"></div>
+        <div class="spirit-layer spirit-wisp2"></div>
+        <div class="spirit-layer spirit-wisp3"></div>
+      </div>
+      <div class="spirit-layer spirit-ring1"></div>
+      <div class="spirit-layer spirit-ring2"></div>
+      <div class="spirit-layer spirit-ring3"></div>
+      <div class="orb-shadow"></div>
+    </div>
+  </div>
+
+  <div id="wake-shockwave"></div>
+  <div id="bubble"></div>
+
+  <!-- Response bubble -->
+  <div id="response-bubble">
+    <div id="response-bubble-bar"></div>
+    <div id="response-bubble-header">
+      <span id="response-bubble-title">Aibo</span>
+      <button id="response-bubble-close">✕</button>
+    </div>
+    <div id="response-bubble-body"></div>
+    <div id="response-bubble-footer">
+      <span id="response-bubble-source"></span>
+      <button id="response-bubble-copy">Copy</button>
+    </div>
+  </div>
+
+  <!-- Selection toolbar -->
+  <div id="sel-toolbar">
+    <div class="sel-btns">
+      <button class="sel-btn read"   id="btn-read">📖 Read</button>
+      <div class="sel-divider"></div>
+      <button class="sel-btn fix"    id="btn-fix">🔧 Fix</button>
+      <div class="sel-divider"></div>
+      <button class="sel-btn"        id="btn-explain">💡 Explain</button>
+      <div class="sel-divider"></div>
+      <button class="sel-btn answer" id="btn-answer">💬 Answer</button>
+      <div class="sel-divider"></div>
+      <button class="sel-btn search" id="btn-search">🔍 Search</button>
+    </div>
+    <div id="toolbar-bar"></div>
+  </div>
+
+  <!-- Settings panel -->
+  <div id="panel">
+    <div class="panel-header">
+      <div class="panel-title">AIBO</div>
+      <div class="panel-header-right">
+        <button id="freeze-btn">⏸ FREEZE</button>
+        <div class="status-badge" id="status-badge">IDLE</div>
+      </div>
+    </div>
+
+    <div class="section-label gap">Orb Style</div>
+    <div class="skin-grid">
+      <button class="skin-btn active" data-skin="ball">🔮 Sphere</button>
+      <button class="skin-btn" data-skin="spirit">👻 Spirit</button>
+      <button class="skin-btn" data-skin="cube">🔷 Cube</button>
+      <button class="skin-btn" data-skin="tetra">🔺 Tetra</button>
+      <button class="skin-btn" data-skin="diamond">💎 Diamond</button>
+      <button class="skin-btn" data-skin="torus">🌀 Torus</button>
+    </div>
+
+    <div class="section-label">Greeting</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <input id="user-name" type="text" placeholder="Your name..." value="Friend"
+        style="flex:1;padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:var(--font-ui);font-size:13px;outline:none;"/>
+    </div>
+    <div class="color-grid" style="margin-bottom:13px;">
+      <button class="skin-btn active" data-lang="en"  style="flex:none;padding:4px 8px;font-size:11px;">🇺🇸 EN</button>
+      <button class="skin-btn" data-lang="es"         style="flex:none;padding:4px 8px;font-size:11px;">🇪🇸 ES</button>
+      <button class="skin-btn" data-lang="fr"         style="flex:none;padding:4px 8px;font-size:11px;">🇫🇷 FR</button>
+      <button class="skin-btn" data-lang="de"         style="flex:none;padding:4px 8px;font-size:11px;">🇩🇪 DE</button>
+      <button class="skin-btn" data-lang="ja"         style="flex:none;padding:4px 8px;font-size:11px;">🇯🇵 JA</button>
+      <button class="skin-btn" data-lang="zh"         style="flex:none;padding:4px 8px;font-size:11px;">🇨🇳 ZH</button>
+      <button class="skin-btn" data-lang="ar"         style="flex:none;padding:4px 8px;font-size:11px;">🇸🇦 AR</button>
+      <button class="skin-btn" data-lang="pt"         style="flex:none;padding:4px 8px;font-size:11px;">🇧🇷 PT</button>
+    </div>
+
+    <div class="section-label">Behavior</div>
+    <div class="toggle-row"><span class="toggle-label">Follow mouse</span><div class="toggle on" id="roam-toggle"></div></div>
+    <div class="toggle-row"><span class="toggle-label">Glow trail</span><div class="toggle on" id="trail-toggle"></div></div>
+    <div class="section-row">
+      <label>Follow</label>
+      <input type="range" id="sensitivity-slider" min="0" max="20" value="8" step="1"/>
+      <span class="val-out" id="sensitivity-val">8</span>
+    </div>
+    <div class="section-row">
+      <label>Orbit</label>
+      <input type="range" id="orbit-slider" min="0" max="100" value="40" step="1"/>
+      <span class="val-out" id="orbit-val">40</span>
+    </div>
+    <div class="section-row">
+      <label>Toolbar</label>
+      <input type="range" id="toolbar-timer" min="1" max="60" value="5" step="1"/>
+      <span class="val-out" id="toolbar-timer-val">5s</span>
+    </div>
+    <div class="section-row">
+      <label>Answer</label>
+      <input type="range" id="answer-timer" min="3" max="60" value="8" step="1"/>
+      <span class="val-out" id="answer-timer-val">8s</span>
+    </div>
+
+    <div class="section-label">Color</div>
+    <div class="color-grid">
+      <div class="color-swatch active" data-color='{"main":"#6C5DD3","glow":"#9b8fef","dark":"#3a2fa0"}' style="background:#6C5DD3"></div>
+      <div class="color-swatch" data-color='{"main":"#1D9E75","glow":"#5ee6c4","dark":"#085041"}' style="background:#1D9E75"></div>
+      <div class="color-swatch" data-color='{"main":"#D85A30","glow":"#f09b7a","dark":"#993C1D"}' style="background:#D85A30"></div>
+      <div class="color-swatch" data-color='{"main":"#378ADD","glow":"#85b9ed","dark":"#0C447C"}' style="background:#378ADD"></div>
+      <div class="color-swatch" data-color='{"main":"#D4537E","glow":"#ed93b1","dark":"#4B1528"}' style="background:#D4537E"></div>
+      <div class="color-swatch" data-color='{"main":"#BA7517","glow":"#FAC775","dark":"#412402"}' style="background:#BA7517"></div>
+    </div>
+    <div class="section-row">
+      <label>Size</label>
+      <input type="range" id="size-slider" min="30" max="80" value="56" step="2"/>
+      <span class="val-out" id="size-val">56</span>
+    </div>
+    <div class="action-row">
+      <button class="action-btn" id="chat-btn">💬 Chat</button>
+      <button class="action-btn" id="tasks-btn">🎯 Tasks</button>
+      <button class="action-btn" id="knowledge-btn">🧠 Knowledge</button>
+      <button class="action-btn danger" id="quit-btn">Quit</button>
+      <button class="action-btn primary" id="done-btn">Done</button>
+    </div>
+  </div>
+
+  <!-- Task input panel -->
+  <div id="task-panel">
+    <div class="panel-header">
+      <div class="panel-title">TASKS</div>
+      <button id="task-panel-close" style="background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;">✕</button>
+    </div>
+
+    <div style="margin-bottom:12px;">
+      <textarea id="task-input"
+        placeholder="Tell Aibo what to do...&#10;&#10;Examples:&#10;• Email John about the 3pm meeting&#10;• Create a file called notes.txt on my desktop&#10;• Open youtube.com&#10;• Add dentist appointment Tuesday at 2pm"
+        style="width:100%;height:110px;padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:var(--font-ui);font-size:13px;resize:none;outline:none;line-height:1.6;"></textarea>
+    </div>
+
+    <button id="task-parse-btn" class="action-btn primary" style="width:100%;margin-bottom:14px;">
+      ✨ Figure out what to do
+    </button>
+
+    <!-- Preview card - shown after parsing -->
+    <div id="task-preview" style="display:none;">
+      <div class="section-label" style="margin-bottom:8px;">Preview</div>
+      <div id="task-preview-card" style="background:var(--surface2);border-radius:10px;padding:12px;border:1px solid var(--border);margin-bottom:12px;font-size:13px;line-height:1.8;"></div>
+      <div class="action-row">
+        <button class="action-btn danger" id="task-cancel-btn">Cancel</button>
+        <button class="action-btn primary" id="task-confirm-btn">✅ Confirm & Execute</button>
+      </div>
+    </div>
+
+    <!-- Gmail connect -->
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
+      <div class="section-label" style="margin-bottom:8px;">Connected Services</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <span style="font-size:12px;color:var(--text-muted);">📧 Gmail</span>
+        <button id="gmail-connect-btn" class="action-btn" style="flex:none;padding:4px 12px;font-size:11px;">Connect</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Knowledge panel -->
+  <div id="knowledge-panel">
+    <div class="panel-header">
+      <div class="panel-title">🧠 KNOWLEDGE</div>
+      <button id="knowledge-panel-close" style="background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;">✕</button>
+    </div>
+    <div id="knowledge-stats" style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);margin-bottom:12px;padding:8px;background:var(--surface2);border:1px solid var(--border);"></div>
+
+    <!-- Learn from URL -->
+    <div class="section-label" style="margin-bottom:6px;">LEARN FROM URL</div>
+    <div class="section-row" style="margin-bottom:10px;">
+      <input id="learn-url-input" type="text" placeholder="https://..."
+        style="flex:1;padding:6px 10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:var(--font-mono);font-size:11px;outline:none;"/>
+      <button id="learn-url-btn" class="action-btn primary" style="flex:none;padding:6px 12px;">GO</button>
+    </div>
+
+    <!-- Learn custom topic -->
+    <div class="section-label" style="margin-bottom:6px;">LEARN A TOPIC</div>
+    <div class="section-row" style="margin-bottom:10px;">
+      <input id="learn-topic-input" type="text" placeholder="e.g. quantum computing, NBA, cooking..."
+        style="flex:1;padding:6px 10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:var(--font-mono);font-size:11px;outline:none;"/>
+      <button id="learn-topic-btn" class="action-btn primary" style="flex:none;padding:6px 12px;">LEARN</button>
+    </div>
+
+    <!-- Actions -->
+    <div class="action-row" style="margin-bottom:12px;">
+      <button class="action-btn" id="crawler-btn">🌙 Night Crawl</button>
+      <button class="action-btn" id="refresh-feeds-btn">🔄 Refresh</button>
+    </div>
+
+    <!-- Feed list -->
+    <div class="section-label" style="margin-bottom:6px;">ACTIVE FEEDS</div>
+    <div id="feed-list" style="max-height:100px;overflow-y:auto;font-size:10px;font-family:var(--font-mono);color:var(--text-muted);"></div>
+
+    <div class="action-row" style="margin-top:10px;">
+      <button class="action-btn primary" id="knowledge-done-btn">Done</button>
+    </div>
+  </div>
+
+  <!-- Chat bubble — floats above orb -->
+  <!-- Talk to Aibo — compact by default, expandable -->
+  <div id="chat-bubble">
+    <!-- Header row — only shows in expanded mode -->
+    <div id="chat-header">
+      <span class="panel-title">// AIBO CHAT</span>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <button id="chat-history-toggle" title="Toggle history" style="background:transparent;border:1px solid var(--border);color:var(--text-muted);cursor:pointer;font-size:9px;padding:2px 8px;font-family:var(--font-mono);letter-spacing:1px;">HIDE</button>
+        <button id="chat-done-btn" style="background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;">✕</button>
+      </div>
+    </div>
+    <!-- Chat history — hidden by default -->
+    <div id="chat-messages"></div>
+    <!-- Input row — always visible when chat open -->
+    <div id="chat-input-row">
+      <button id="chat-voice-btn" title="Click to speak">🎤</button>
+      <input id="chat-input" type="text" placeholder="Talk to Aibo..."/>
+      <button id="chat-send-btn">➤</button>
+    </div>
+    <div id="chat-voice-status"></div>
+  </div>
+
+  <div id="ai-modal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div>
+          <span class="modal-title" id="modal-title">Aibo</span>
+          <span class="modal-model" id="modal-model"></span>
+        </div>
+        <button class="modal-close" id="modal-close">✕</button>
+      </div>
+      <div class="modal-selection" id="modal-selection"></div>
+      <div class="modal-body">
+        <div class="modal-response" id="modal-response">
+          <div class="modal-loading">
+            <div class="dots"><span></span><span></span><span></span></div>
+            <span>Thinking...</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-action" id="modal-copy">Copy</button>
+        <button class="modal-action primary" id="modal-done">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ── ELEMENTS ──
+    const orbWrap    = document.getElementById('orb-wrap')
+    const orbEl      = document.getElementById('orb')
+    const orbCore    = orbEl.querySelector('.orb-core')
+    const orbShadow  = orbEl.querySelector('.orb-shadow')
+    const cursorEl   = document.getElementById('cursor')
+    const panel      = document.getElementById('panel')
+    const freezeBtn  = document.getElementById('freeze-btn')
+    const badge      = document.getElementById('status-badge')
+    const bubbleEl   = document.getElementById('bubble')
+    const selToolbar = document.getElementById('sel-toolbar')
+    const aiModal    = document.getElementById('ai-modal')
+    const modalTitle = document.getElementById('modal-title')
+    const modalModel = document.getElementById('modal-model')
+    const modalSel   = document.getElementById('modal-selection')
+    const modalResp  = document.getElementById('modal-response')
+    const respBubble      = document.getElementById('response-bubble')
+    const respBubbleBody  = document.getElementById('response-bubble-body')
+    const respBubbleTitle = document.getElementById('response-bubble-title')
+    const respBubbleSrc   = document.getElementById('response-bubble-source')
+
+    // ── STATE ──
+    let W = window.innerWidth, H = window.innerHeight
+    let ORB_SIZE = 56
+    let ox = W/2 - ORB_SIZE/2, oy = H/2 - ORB_SIZE/2
+    let vx = 0, vy = 0, mx = W/2, my = H/2
+    let orbitAngle = 0, orbitR = 40, speed = 8
+    let roamMode = true, trailOn = true
+    let frozen = false, panelOpen = false, modalOpen = false, respBubbleOpen = false
+    let isDragging = false, dragOffX = 0, dragOffY = 0
+    let clickStartX = 0, clickStartY = 0
+    let squishX = 1, squishY = 1
+    let lastSelection = ''
+    let idleTimer = null
+    let toolbarTimeout = null, toolbarDismiss = 5
+    let responseBubbleTimer = null, responseBubbleDismiss = 8
+    let currentSkin = 'ball'
+
+    // ── TRAIL ──
+    const TRAIL_N = 12
+    const trail = []
+    for (let i = 0; i < TRAIL_N; i++) {
+      const d = document.createElement('div')
+      d.className = 'trail-dot'
+      d.style.display = 'none'
+      document.body.appendChild(d)
+      trail.push({ el: d, x: ox, y: oy, life: 0 })
+    }
+    let trailHead = 0, trailTick = 0
+
+    function lerp(a, b, t) { return a + (b-a)*t }
+
+    // ── PHYSICS ──
+    function tick() {
+      W = window.innerWidth; H = window.innerHeight
+      const PAD = 8
+
+      if (!isDragging && roamMode && !frozen) {
+        orbitAngle += 0.016
+
+        // Autonomous roam — drift toward random target when idle
+        let tx, ty
+        if (autoRoamActive) {
+          tx = autoRoamTarget.x - ORB_SIZE/2
+          ty = autoRoamTarget.y - ORB_SIZE/2
+          const stiff = 0.0008, damp = 0.96  // very slow, dreamy movement
+          vx = (vx + (tx - ox) * stiff) * damp
+          vy = (vy + (ty - oy) * stiff) * damp
+        } else {
+          tx = mx + Math.cos(orbitAngle) * orbitR - ORB_SIZE/2
+          ty = my + Math.sin(orbitAngle * 0.72) * orbitR - ORB_SIZE/2
+          const stiff = speed * 0.0028, damp = 0.80
+          vx = (vx + (tx - ox) * stiff) * damp
+          vy = (vy + (ty - oy) * stiff) * damp
+        }
+
+        ox += vx; oy += vy
+        if (ox < PAD)                { ox = PAD;                vx *= -0.45 }
+        if (ox > W - ORB_SIZE - PAD) { ox = W - ORB_SIZE - PAD; vx *= -0.45 }
+        if (oy < PAD)                { oy = PAD;                vy *= -0.45 }
+        if (oy > H - ORB_SIZE - PAD) { oy = H - ORB_SIZE - PAD; vy *= -0.45 }
+        const spd = Math.sqrt(vx*vx + vy*vy)
+        const sq  = Math.min(spd * 0.045, 0.28)
+        const ang = Math.atan2(vy, vx)
+        squishX = lerp(squishX, 1 + sq * Math.abs(Math.cos(ang)), 0.18)
+        squishY = lerp(squishY, 1 - sq * 0.6, 0.18)
+      } else if (isDragging) {
+        ox = mx - dragOffX; oy = my - dragOffY
+        vx = vy = 0
+        squishX = lerp(squishX, 1, 0.3)
+        squishY = lerp(squishY, 1, 0.3)
+      } else {
+        // Frozen or not roaming — kill velocity completely
+        vx = 0; vy = 0
+        squishX = lerp(squishX, 1, 0.12)
+        squishY = lerp(squishY, 1, 0.12)
+      }
+
+      orbWrap.style.left = Math.round(ox) + 'px'
+      orbWrap.style.top  = Math.round(oy) + 'px'
+
+      // Only apply squish in ball mode — spirit floats freely
+      if (currentSkin === 'ball') {
+        orbCore.style.transform = `scaleX(${squishX.toFixed(3)}) scaleY(${squishY.toFixed(3)})`
+        const spd2 = Math.sqrt(vx*vx + vy*vy)
+        orbShadow.style.opacity = Math.min(0.06 + spd2*0.012, 0.22).toFixed(3)
+      } else {
+        orbCore.style.transform = ''
+      }
+
+      trailTick++
+      if (trailTick % 3 === 0) spawnTrail()
+      updateTrail()
+      if (panelOpen) positionPanel()
+      if (respBubbleOpen) positionResponseBubble()
+      if (taskPanelOpen) positionTaskPanel()
+      if (chatOpen) positionChatBubble()
+      if (knowledgePanelOpen) positionKnowledgePanel()
+      requestAnimationFrame(tick)
+    }
+
+    function spawnTrail() {
+      if (!trailOn) return
+      const t = trail[trailHead % TRAIL_N]
+      t.x = ox + ORB_SIZE/2; t.y = oy + ORB_SIZE/2; t.life = 1
+      t.el.style.display = 'block'
+      trailHead++
+    }
+
+    function updateTrail() {
+      const isSpirit = currentSkin === 'spirit'
+      trail.forEach(t => {
+        if (t.life <= 0) { t.el.style.display = 'none'; return }
+        t.life -= isSpirit ? 0.03 : 0.055  // spirit trails linger longer
+        const sz = ORB_SIZE * (isSpirit ? 0.6 : 0.45) * t.life
+        t.el.style.width   = sz + 'px'
+        t.el.style.height  = sz + 'px'
+        t.el.style.left    = t.x + 'px'
+        t.el.style.top     = t.y + 'px'
+        t.el.style.opacity = (t.life * (isSpirit ? 0.2 : 0.32)).toFixed(3)
+        t.el.style.filter  = isSpirit ? `blur(${(3 * t.life).toFixed(1)}px)` : 'none'
+        if (t.life <= 0) t.el.style.display = 'none'
+      })
+    }
+
+    // ── SKIN ──
+    function setSkin(skin) {
+      currentSkin = skin
+      document.body.setAttribute('data-skin', skin)
+      document.querySelectorAll('.skin-btn').forEach(b => b.classList.toggle('active', b.dataset.skin === skin))
+      // Spirit trails are blurry and linger — ball trails are crisp and quick
+    }
+
+    // ── PANEL ──
+    function positionPanel() {
+      const pw = 300, ph = panel.offsetHeight || 420
+      let px = ox + ORB_SIZE + 14
+      let py = oy + ORB_SIZE/2 - ph/2
+      if (px + pw > W - 10) px = ox - pw - 14
+      if (py < 10) py = 10
+      if (py + ph > H - 10) py = H - ph - 10
+      panel.style.left = Math.round(px) + 'px'
+      panel.style.top  = Math.round(py) + 'px'
+    }
+
+    function openPanel() {
+      panelOpen = true
+      panel.classList.add('visible')
+      positionPanel()
+      setFrozen(true)
+      window.aibo.setIgnoreMouse(false)
+    }
+
+    function closePanel() {
+      panelOpen = false
+      panel.classList.remove('visible')
+      setFrozen(false)
+      updatePassthrough()
+    }
+
+    function setFrozen(val) {
+      frozen = val
+      if (frozen) {
+        // Fully stop all movement
+        vx = 0; vy = 0
+        orbitAngle = 0
+        stopAutoRoam()
+        freezeBtn.textContent = '▶ RESUME'
+        freezeBtn.style.background  = 'rgba(216,90,48,0.25)'
+        freezeBtn.style.borderColor = 'rgba(216,90,48,0.5)'
+        freezeBtn.style.color       = '#f09b7a'
+        badge.textContent = 'FROZEN'
+      } else {
+        freezeBtn.textContent = '⏸ FREEZE'
+        freezeBtn.style.background  = 'rgba(108,93,211,0.18)'
+        freezeBtn.style.borderColor = 'var(--border)'
+        freezeBtn.style.color       = 'var(--orb-glow)'
+        badge.textContent = 'IDLE'
+      }
+    }
+
+    function updatePassthrough() {
+      const needsMouse = panelOpen || modalOpen || respBubbleOpen
+        || selToolbar.classList.contains('show')
+        || taskPanelOpen || chatOpen || knowledgePanelOpen
+      window.aibo.setIgnoreMouse(!needsMouse)
+    }
+
+    function setState(s) {
+      document.body.setAttribute('data-state', s)
+      if (!panelOpen) badge.textContent = s.toUpperCase()
+    }
+
+    // ── BUBBLES ──
+    function showBubble(text, duration = 3000) {
+      bubbleEl.textContent = text
+      const bx = ox + ORB_SIZE + 14
+      bubbleEl.style.left = (bx > W - 250 ? ox - 250 : bx) + 'px'
+      bubbleEl.style.top  = (oy - 10) + 'px'
+      bubbleEl.classList.add('show')
+      clearTimeout(bubbleEl._t)
+      bubbleEl._t = setTimeout(() => bubbleEl.classList.remove('show'), duration)
+    }
+
+    // ── AUTONOMOUS PERSONALITY ────────────────────────────────────────────
+    // Aibo has moods, wanders with purpose, speaks unprompted
+
+    const MOODS = {
+      curious:    { speed: 0.0012, orbitR: 60,  glow: 0.45, label: 'curious'    },
+      focused:    { speed: 0.0006, orbitR: 20,  glow: 0.25, label: 'focused'    },
+      playful:    { speed: 0.0020, orbitR: 80,  glow: 0.55, label: 'playful'    },
+      bored:      { speed: 0.0004, orbitR: 10,  glow: 0.15, label: 'bored'      },
+      alert:      { speed: 0.0018, orbitR: 50,  glow: 0.60, label: 'alert'      },
+    }
+
+    let currentMood     = 'curious'
+    let autoRoamActive  = false
+    let autoRoamTarget  = { x: W/2, y: H/2 }
+    let autoRoamTimer   = null
+    let autoRoamMoveTimer = null
+    let moodTimer       = null
+    let lastSpokenTime  = 0
+
+    // Mood-based unprompted thoughts
+    const moodThoughts = {
+      curious:  [
+        'What are you working on?',
+        'Interesting... tell me more.',
+        'I noticed something — want me to look into it?',
+        'This looks complex. Need help?',
+        'I\'m picking up a lot of activity here.',
+      ],
+      playful:  [
+        'Bet I can find that faster than you.',
+        'You know I can do that for you, right?',
+        'Try me — what do you need?',
+        'I\'m bored. Give me something to do.',
+        'Still here. Still faster than Google.',
+      ],
+      bored:    [
+        '...',
+        'Still here.',
+        'Whenever you\'re ready.',
+        'I could reorganize your files while I wait.',
+        'Just sitting here thinking about AI things.',
+      ],
+      focused:  [
+        'I\'ll stay quiet. You\'re in the zone.',
+        'Focused mode. I\'m watching.',
+        'Not interrupting. Just here.',
+      ],
+      alert:    [
+        'Something caught my attention.',
+        'Heads up — I noticed something.',
+        'You might want to look at this.',
+        'Alert. Something changed.',
+      ],
+    }
+
+    function getRandomThought() {
+      const thoughts = moodThoughts[currentMood] || moodThoughts.curious
+      return thoughts[Math.floor(Math.random() * thoughts.length)]
+    }
+
+    function setMood(mood) {
+      if (!MOODS[mood]) return
+      currentMood = mood
+      console.log('[Aibo] Mood:', mood)
+
+      // Adjust glow based on mood
+      const m = MOODS[mood]
+      document.documentElement.style.setProperty(
+        '--orb-glow-opacity', m.glow.toString()
+      )
+    }
+
+    function shiftMoodNaturally() {
+      const hour = new Date().getHours()
+      const roll = Math.random()
+
+      // Time-based mood tendencies
+      if (hour >= 22 || hour < 6) {
+        setMood(roll < 0.6 ? 'bored' : 'focused')
+      } else if (hour >= 9 && hour < 17) {
+        if (roll < 0.35)      setMood('focused')
+        else if (roll < 0.65) setMood('curious')
+        else if (roll < 0.85) setMood('alert')
+        else                  setMood('playful')
+      } else {
+        if (roll < 0.4)       setMood('curious')
+        else if (roll < 0.7)  setMood('playful')
+        else                  setMood('bored')
+      }
+
+      // Shift mood again in 2-5 minutes
+      clearTimeout(moodTimer)
+      moodTimer = setTimeout(shiftMoodNaturally, (120 + Math.random() * 180) * 1000)
+    }
+
+    function pickRoamTarget() {
+      const mood = MOODS[currentMood]
+      const pad  = 100
+      // Playful mood = bigger jumps, focused = stays near center
+      const range = currentMood === 'focused' ? 0.3 : currentMood === 'playful' ? 1.0 : 0.7
+      const cx = W / 2, cy = H / 2
+      autoRoamTarget = {
+        x: cx + (Math.random() - 0.5) * W * range,
+        y: cy + (Math.random() - 0.5) * H * range,
+      }
+      // Clamp to screen
+      autoRoamTarget.x = Math.max(pad, Math.min(W - pad, autoRoamTarget.x))
+      autoRoamTarget.y = Math.max(pad, Math.min(H - pad, autoRoamTarget.y))
+    }
+
+    function startAutoRoam() {
+      if (autoRoamActive || panelOpen || taskPanelOpen || modalOpen) return
+      autoRoamActive = true
+      pickRoamTarget()
+      console.log('[Aibo] Autonomous roam started — mood:', currentMood)
+
+      // Move to new target every 4-10 seconds based on mood
+      const interval = currentMood === 'playful' ? 3000
+                     : currentMood === 'bored'   ? 10000
+                     : currentMood === 'alert'   ? 2000
+                     : 5000 + Math.random() * 3000
+
+      autoRoamMoveTimer = setInterval(() => {
+        if (!autoRoamActive) { clearInterval(autoRoamMoveTimer); return }
+        pickRoamTarget()
+
+        // Occasionally speak unprompted based on mood
+        const now = Date.now()
+        const timeSinceSpoke = now - lastSpokenTime
+        const shouldSpeak = timeSinceSpoke > 60000 && Math.random() < 0.15
+
+        if (shouldSpeak) {
+          const thought = getRandomThought()
+          showBubble(thought, 4000)
+          window.aibo.speak(thought)
+          lastSpokenTime = now
+        }
+      }, interval)
+    }
+
+    function stopAutoRoam() {
+      if (!autoRoamActive) return
+      autoRoamActive = false
+      clearInterval(autoRoamMoveTimer)
+      clearTimeout(autoRoamTimer)
+    }
+
+    function resetIdleTimer() {
+      stopAutoRoam()
+      clearTimeout(idleTimer)
+      idleTimer = setTimeout(() => {
+        if (document.body.dataset.state === 'idle') {
+          // Show a mood-appropriate thought
+          const thought = getRandomThought()
+          showBubble(thought, 4000)
+          // Start roaming after 5 more seconds
+          setTimeout(startAutoRoam, 5000)
+        }
+      }, 20000) // 20 seconds of inactivity before roaming
+    }
+
+    // Start with curious mood, shift naturally over time
+    setMood('curious')
+    setTimeout(shiftMoodNaturally, 120000) // first shift after 2 min
+
+    // ── RESPONSE BUBBLE ──
+    function positionResponseBubble() {
+      const bw = 320, bh = respBubble.offsetHeight || 180
+      let bx = ox + ORB_SIZE + 14
+      let by = oy + ORB_SIZE/2 - bh/2
+      if (bx + bw > W - 10) bx = ox - bw - 14
+      if (by < 10) by = 10
+      if (by + bh > H - 10) by = H - bh - 10
+      respBubble.style.left = Math.round(bx) + 'px'
+      respBubble.style.top  = Math.round(by) + 'px'
+    }
+
+    function showResponseBubble(title, text, source) {
+      respBubbleTitle.textContent = title
+      respBubbleSrc.textContent   = source || ''
+      respBubbleBody.innerHTML    = ''
+      respBubbleOpen = true
+      respBubble.classList.add('show')
+      positionResponseBubble()
+      updatePassthrough()
+      typeText(respBubbleBody, text)
+
+      // Auto dismiss countdown
+      clearTimeout(responseBubbleTimer)
+      const bar = document.getElementById('response-bubble-bar')
+      if (bar) {
+        bar.style.transition = 'none'
+        bar.style.width = '100%'
+        bar.offsetHeight
+        bar.style.transition = `width ${responseBubbleDismiss}s linear`
+        bar.style.width = '0%'
+      }
+      responseBubbleTimer = setTimeout(hideResponseBubble, responseBubbleDismiss * 1000)
+    }
+
+    function hideResponseBubble() {
+      clearTimeout(responseBubbleTimer)
+      respBubbleOpen = false
+      respBubble.classList.remove('show')
+      updatePassthrough()
+    }
+
+    // Pause timer on hover
+    respBubble.addEventListener('mouseenter', () => {
+      clearTimeout(responseBubbleTimer)
+      const bar = document.getElementById('response-bubble-bar')
+      if (bar) { bar.style.transition = 'none'; bar.style.width = '100%' }
+    })
+    respBubble.addEventListener('mouseleave', () => {
+      const bar = document.getElementById('response-bubble-bar')
+      if (bar) {
+        bar.style.transition = `width ${responseBubbleDismiss}s linear`
+        bar.style.width = '0%'
+      }
+      responseBubbleTimer = setTimeout(hideResponseBubble, responseBubbleDismiss * 1000)
+    })
+
+    function typeText(el, text, speed = 16) {
+      el.innerHTML = '<span class="typing-cursor"></span>'
+      let i = 0
+      const cursor = el.querySelector('.typing-cursor')
+      const iv = setInterval(() => {
+        if (i < text.length) {
+          cursor.insertAdjacentText('beforebegin', text[i++])
+          el.scrollTop = el.scrollHeight
+        } else {
+          cursor.remove()
+          clearInterval(iv)
+        }
+      }, speed)
+    }
+
+    document.getElementById('response-bubble-close').addEventListener('click', hideResponseBubble)
+    document.getElementById('response-bubble-copy').addEventListener('click', function() {
+      window.aibo.writeClipboard(respBubbleBody.textContent)
+      this.textContent = 'Copied!'
+      setTimeout(() => this.textContent = 'Copy', 1800)
+    })
+
+    // ── TOOLBAR ──
+    function showToolbarNearOrb() {
+      let tx = ox + ORB_SIZE + 14
+      let ty = oy - 10
+      if (tx + 310 > W) tx = ox - 320
+      if (ty < 10) ty = oy + ORB_SIZE + 10
+      selToolbar.style.left = Math.round(tx) + 'px'
+      selToolbar.style.top  = Math.round(ty) + 'px'
+      selToolbar.classList.add('show')
+      updatePassthrough()
+      startToolbarCountdown()
+    }
+
+    function startToolbarCountdown() {
+      clearTimeout(toolbarTimeout)
+      const bar = document.getElementById('toolbar-bar')
+      if (bar) {
+        bar.style.transition = 'none'
+        bar.style.width = '100%'
+        bar.offsetHeight
+        bar.style.transition = `width ${toolbarDismiss}s linear`
+        bar.style.width = '0%'
+      }
+      toolbarTimeout = setTimeout(() => {
+        selToolbar.classList.remove('show')
+        updatePassthrough()
+      }, toolbarDismiss * 1000)
+    }
+
+    selToolbar.addEventListener('mouseenter', () => {
+      clearTimeout(toolbarTimeout)
+      const bar = document.getElementById('toolbar-bar')
+      if (bar) { bar.style.transition = 'none'; bar.style.width = '100%' }
+    })
+    selToolbar.addEventListener('mouseleave', startToolbarCountdown)
+
+    // ── MOUSE ──
+    window.aibo.onMouseMove(pos => {
+      // pos.active = false means cursor is on a different monitor
+      // hide the orb on this display and freeze it off screen
+      if (pos.active === false) {
+        orbWrap.style.opacity  = '0'
+        orbWrap.style.pointerEvents = 'none'
+        frozen = true
+        return
+      }
+
+      // Cursor is on this display — show orb and track
+      orbWrap.style.opacity  = '1'
+      orbWrap.style.pointerEvents = ''
+      if (frozen && !panelOpen && !taskPanelOpen) frozen = false
+
+      mx = pos.x; my = pos.y
+      cursorEl.style.left = mx + 'px'
+      cursorEl.style.top  = my + 'px'
+      resetIdleTimer()
+    })
+
+    window.aibo.onClipboardChange(text => {
+      // Always update — never get stuck on old selection
+      lastSelection = text
+      console.log('[Aibo] Clipboard updated:', text.slice(0, 60))
+      showBubble('Got it — right-click or Ctrl+Shift+Space')
+    })
+
+    // ── GREETINGS ──────────────────────────────────────────────────────────
+    let userName = 'Friend'
+    let userLang = 'en'
+
+    const greetings = {
+      en: {
+        morning:   n => `Good morning, ${n}!`,
+        afternoon: n => `Good afternoon, ${n}!`,
+        evening:   n => `Good evening, ${n}!`,
+        night:     n => `Working late, ${n}?`,
+      },
+      es: {
+        morning:   n => `¡Buenos días, ${n}!`,
+        afternoon: n => `¡Buenas tardes, ${n}!`,
+        evening:   n => `¡Buenas noches, ${n}!`,
+        night:     n => `¿Trabajando tarde, ${n}?`,
+      },
+      fr: {
+        morning:   n => `Bonjour, ${n}!`,
+        afternoon: n => `Bon après-midi, ${n}!`,
+        evening:   n => `Bonsoir, ${n}!`,
+        night:     n => `Tu travailles tard, ${n}?`,
+      },
+      de: {
+        morning:   n => `Guten Morgen, ${n}!`,
+        afternoon: n => `Guten Tag, ${n}!`,
+        evening:   n => `Guten Abend, ${n}!`,
+        night:     n => `Noch wach, ${n}?`,
+      },
+      ja: {
+        morning:   n => `おはようございます、${n}！`,
+        afternoon: n => `こんにちは、${n}！`,
+        evening:   n => `こんばんは、${n}！`,
+        night:     n => `夜遅くまで、${n}？`,
+      },
+      zh: {
+        morning:   n => `早上好，${n}！`,
+        afternoon: n => `下午好，${n}！`,
+        evening:   n => `晚上好，${n}！`,
+        night:     n => `还没睡，${n}？`,
+      },
+      ar: {
+        morning:   n => `صباح الخير، ${n}!`,
+        afternoon: n => `مساء الخير، ${n}!`,
+        evening:   n => `مساء النور، ${n}!`,
+        night:     n => `تعمل متأخراً، ${n}؟`,
+      },
+      pt: {
+        morning:   n => `Bom dia, ${n}!`,
+        afternoon: n => `Boa tarde, ${n}!`,
+        evening:   n => `Boa noite, ${n}!`,
+        night:     n => `Trabalhando tarde, ${n}?`,
+      },
+    }
+
+    function getTimeGreeting() {
+      const h = new Date().getHours()
+      if (h >= 5  && h < 12) return 'morning'
+      if (h >= 12 && h < 17) return 'afternoon'
+      if (h >= 17 && h < 21) return 'evening'
+      return 'night'
+    }
+
+    function buildGreeting() {
+      const lang = greetings[userLang] || greetings.en
+      const time = getTimeGreeting()
+      return lang[time](userName)
+    }
+
+    // ── WAKE ANIMATIONS ───────────────────────────────────────────────────
+    const wakeStyles = ['burst', 'materialize', 'powerup', 'shockwave']
+    let lastWake = -1
+
+    function playWakeAnimation() {
+      // Pick random style — never repeat same one twice in a row
+      let pick
+      do { pick = Math.floor(Math.random() * wakeStyles.length) } while (pick === lastWake)
+      lastWake = pick
+      const style = wakeStyles[pick]
+
+      const cx = ox + ORB_SIZE / 2
+      const cy = oy + ORB_SIZE / 2
+
+      if (style === 'burst')       wakeBurst(cx, cy)
+      if (style === 'materialize') wakeMaterialize()
+      if (style === 'powerup')     wakePowerup()
+      if (style === 'shockwave')   wakeShockwave(cx, cy)
+    }
+
+    // 1 — Energy burst: rings explode outward
+    function wakeBurst(cx, cy) {
+      const scales = [2.5, 4, 6]
+      const delays = [0, 120, 240]
+      scales.forEach((scale, i) => {
+        const ring = document.createElement('div')
+        ring.className = 'wake-ring'
+        ring.style.cssText = `
+          left:${cx}px; top:${cy}px;
+          width:${ORB_SIZE}px; height:${ORB_SIZE}px;
+          --ring-scale:${scale};
+          animation: wake-ring-burst ${0.6 + i * 0.15}s ease-out ${delays[i]}ms forwards;
+        `
+        document.body.appendChild(ring)
+        setTimeout(() => ring.remove(), 1000 + delays[i])
+      })
+
+      // Shoot 8 particles outward
+      for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2
+        const dist  = 60 + Math.random() * 40
+        const px    = Math.cos(angle) * dist
+        const py    = Math.sin(angle) * dist
+        const p     = document.createElement('div')
+        p.className = 'wake-particle'
+        p.style.cssText = `
+          left:${cx}px; top:${cy}px;
+          --px:${px}px; --py:${py}px;
+          width:${4 + Math.random() * 4}px;
+          height:${4 + Math.random() * 4}px;
+          animation: wake-particle-fly ${0.5 + Math.random() * 0.3}s ease-out forwards;
+        `
+        document.body.appendChild(p)
+        setTimeout(() => p.remove(), 900)
+      }
+    }
+
+    // 2 — Materialize: orb fades in from nothing
+    function wakeMaterialize() {
+      orbWrap.style.animation = 'none'
+      orbWrap.style.opacity   = '0'
+      orbWrap.style.transform = 'scale(0.05)'
+      orbWrap.offsetHeight    // force reflow
+      orbWrap.style.transition = 'none'
+      orbWrap.style.animation  = 'wake-materialize 0.7s cubic-bezier(0.34,1.56,0.64,1) forwards'
+      setTimeout(() => {
+        orbWrap.style.animation  = ''
+        orbWrap.style.opacity    = ''
+        orbWrap.style.transform  = ''
+      }, 750)
+    }
+
+    // 3 — Power up: grows from tiny with brightness flash
+    function wakePowerup() {
+      orbCore.style.animation = 'wake-powerup 0.65s cubic-bezier(0.34,1.4,0.64,1) forwards'
+      setTimeout(() => { orbCore.style.animation = '' }, 700)
+    }
+
+    // 4 — Shockwave: ripple across whole screen from orb center
+    function wakeShockwave(cx, cy) {
+      const sw = document.getElementById('wake-shockwave')
+      const xPct = ((cx / W) * 100).toFixed(1) + '%'
+      const yPct = ((cy / H) * 100).toFixed(1) + '%'
+      sw.style.background = `radial-gradient(circle at ${xPct} ${yPct}, rgba(108,93,211,0.22) 0%, transparent 60%)`
+      sw.style.animation  = 'none'
+      sw.offsetHeight
+      sw.style.animation  = 'wake-shockwave 0.7s ease-out forwards'
+      setTimeout(() => { sw.style.animation = '' }, 750)
+
+      // Plus a burst from center
+      wakeBurst(cx, cy)
+    }
+
+    // ── TRIGGER SELECTION (Alt+A) ─────────────────────────────────────────
+    window.aibo.onTriggerSelection(() => {
+      console.log('[Aibo] Ctrl+Shift+Space triggered')
+      if (lastSelection && lastSelection.length > 2) {
+        // Has text — show toolbar
+        playWakeAnimation()
+        showToolbarNearOrb()
+        showBubble('What should I do with this?', 4000)
+      } else {
+        // No text — wake Aibo with greeting
+        playWakeAnimation()
+        setState('speaking')
+        const greeting = buildGreeting()
+        showBubble(greeting, 4000)
+        setTimeout(() => setState('idle'), 2500)
+      }
+    })
+
+    // ── ORB EVENTS ──
+    orbEl.addEventListener('mouseenter', () => {
+      if (!panelOpen && !modalOpen && !respBubbleOpen) window.aibo.setIgnoreMouse(false)
+    })
+    orbEl.addEventListener('mouseleave', () => {
+      if (!isDragging && !panelOpen && !modalOpen && !respBubbleOpen && !selToolbar.classList.contains('show')) {
+        window.aibo.setIgnoreMouse(true)
+      }
+    })
+    orbEl.addEventListener('mousedown', e => {
+      if (e.button !== 0) return
+      isDragging = true
+      dragOffX = e.clientX - ox; dragOffY = e.clientY - oy
+      clickStartX = e.clientX; clickStartY = e.clientY
+      e.preventDefault()
+    })
+    orbEl.addEventListener('contextmenu', e => {
+      e.preventDefault()
+      if (lastSelection && lastSelection.length > 2) {
+        showToolbarNearOrb()
+        showBubble('What should I do with this?')
+      } else {
+        showBubble('Copy some text with Ctrl+C first')
+      }
+    })
+    document.addEventListener('mouseup', e => {
+      if (!isDragging) return
+      isDragging = false
+      const moved = Math.abs(e.clientX - clickStartX) + Math.abs(e.clientY - clickStartY)
+      if (moved < 6) panelOpen ? closePanel() : openPanel()
+      updatePassthrough()
+    })
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        if (modalOpen) closeModal()
+        else if (respBubbleOpen) hideResponseBubble()
+        else if (chatOpen) closeChat()
+        else if (panelOpen) closePanel()
+        else if (selToolbar.classList.contains('show')) {
+          selToolbar.classList.remove('show')
+          updatePassthrough()
+        }
+      }
+    })
+
+    // ── TOOLBAR BUTTONS ──
+    document.getElementById('btn-read').addEventListener('click',    () => runOllama('read',    lastSelection))
+    document.getElementById('btn-fix').addEventListener('click',     () => runOllama('fix',     lastSelection))
+    document.getElementById('btn-explain').addEventListener('click', () => runOllama('explain', lastSelection))
+    document.getElementById('btn-answer').addEventListener('click',  () => runAnswer(lastSelection))
+    document.getElementById('btn-search').addEventListener('click',  () => runSearch(lastSelection))
+
+    // ── OLLAMA ──
+    async function runOllama(mode, text) {
+      console.log('[Aibo] runOllama — mode:', mode)
+      if (!text || text.length < 2) { showBubble('No text captured yet!'); return }
+
+      selToolbar.classList.remove('show')
+      clearTimeout(toolbarTimeout)
+
+      const titles = { read: '📖 Reading', fix: '🔧 Fixing Code', explain: '💡 Explaining' }
+      modalTitle.textContent = titles[mode] || 'Aibo'
+      modalModel.textContent = ''
+      modalSel.textContent   = text.length > 300 ? text.slice(0, 300) + '…' : text
+      modalResp.className    = 'modal-response'
+      modalResp.innerHTML    = `<div class="modal-loading"><div class="dots"><span></span><span></span><span></span></div><span>Thinking...</span></div>`
+
+      openModal()
+      setState('thinking')
+      showBubble('On it...', 10000)
+
+      let result
+      try {
+        result = await window.aibo.askOllama(mode, text)
+        console.log('[Aibo] Result ok:', result?.ok)
+      } catch(e) {
+        result = { ok: false, error: e.message }
+      }
+
+      if (result && result.ok) {
+        const isCode = mode === 'fix' || (mode === 'explain' && looksLikeCode(text))
+        modalResp.className   = 'modal-response' + (isCode ? ' code' : '')
+        modalResp.textContent = result.reply
+        modalModel.textContent = `via ${result.model}`
+        setState('speaking')
+        setTimeout(() => setState('idle'), 3000)
+        if (mode === 'fix') {
+          window.aibo.writeClipboard(result.reply)
+          showBubble('Fixed! Ctrl+V to paste', 4000)
+        }
+      } else {
+        modalResp.className   = 'modal-response'
+        modalResp.textContent = result?.error || 'Something went wrong'
+        setState('idle')
+      }
+    }
+
+    async function runAnswer(text) {
+      if (!text || text.length < 2) { showBubble('No text captured yet!'); return }
+      selToolbar.classList.remove('show')
+      clearTimeout(toolbarTimeout)
+      setState('thinking')
+      showBubble('Thinking...', 10000)
+
+      let result
+      try {
+        result = await window.aibo.askOllama('chat', `Answer this question concisely in 1-3 sentences: ${text}`)
+      } catch(e) { result = { ok: false, error: e.message } }
+
+      if (result && result.ok) {
+        setState('speaking')
+        showResponseBubble('💬 Aibo', result.reply, `via ${result.model}`)
+        // Speak the response
+        window.aibo.speak(result.reply)
+        setTimeout(() => setState('idle'), 2000)
+      } else {
+        showBubble('Could not get answer', 3000)
+        setState('idle')
+      }
+    }
+
+    async function runSearch(query) {
+      if (!query || query.length < 2) { showBubble('No text captured yet!'); return }
+      selToolbar.classList.remove('show')
+      clearTimeout(toolbarTimeout)
+      setState('thinking')
+      showBubble('Searching...', 10000)
+
+      let searchResult
+      try { searchResult = await window.aibo.webSearch(query) }
+      catch(e) { searchResult = { ok: false } }
+
+      if (searchResult && searchResult.ok && searchResult.answer) {
+        setState('speaking')
+        showResponseBubble('🔍 Web Answer', searchResult.answer, searchResult.source)
+        window.aibo.speak(searchResult.answer)
+        setTimeout(() => setState('idle'), 2000)
+      } else {
+        let result
+        try {
+          result = await window.aibo.askOllama('chat', `Answer based on what you know: "${query}"`)
+        } catch(e) { result = { ok: false } }
+
+        if (result && result.ok) {
+          setState('speaking')
+          showResponseBubble('🔍 Aibo Search', result.reply, `via ${result.model}`)
+          window.aibo.speak(result.reply)
+          setTimeout(() => setState('idle'), 2000)
+        } else {
+          showBubble('Search failed', 3000)
+          setState('idle')
+        }
+      }
+    }
+
+    function looksLikeCode(text) {
+      return /[{};()=>]|def |function |import |class |const |let |var |return /.test(text)
+    }
+
+    // ── MODAL ──
+    function openModal() {
+      modalOpen = true
+      aiModal.classList.add('show')
+      updatePassthrough()
+    }
+    function closeModal() {
+      modalOpen = false
+      aiModal.classList.remove('show')
+      setState('idle')
+      updatePassthrough()
+    }
+
+    document.getElementById('modal-close').addEventListener('click', closeModal)
+    document.getElementById('modal-done').addEventListener('click', closeModal)
+    aiModal.addEventListener('click', e => { if (e.target === aiModal) closeModal() })
+    document.getElementById('modal-copy').addEventListener('click', function() {
+      window.aibo.writeClipboard(modalResp.textContent)
+      this.textContent = 'Copied!'
+      setTimeout(() => this.textContent = 'Copy', 1800)
+    })
+
+    // ── PANEL CONTROLS ──
+    freezeBtn.addEventListener('click', () => setFrozen(!frozen))
+    document.getElementById('done-btn').addEventListener('click', closePanel)
+    document.getElementById('quit-btn').addEventListener('click', () => window.aibo.quit())
+
+    document.querySelectorAll('.skin-btn').forEach(btn => {
+      if (btn.dataset.skin) btn.addEventListener('click', () => setSkin(btn.dataset.skin))
+      if (btn.dataset.lang) btn.addEventListener('click', () => {
+        userLang = btn.dataset.lang
+        document.querySelectorAll('[data-lang]').forEach(b => b.classList.remove('active'))
+        btn.classList.add('active')
+        window.aibo.updateMemory({ user: { language: userLang } })
+      })
+    })
+
+    document.getElementById('user-name').addEventListener('input', function() {
+      userName = this.value.trim() || 'Friend'
+      window.aibo.updateMemory({ user: { name: userName } })
+    })
+
+    // Load saved name + language from memory on startup
+    window.aibo.getMemory().then(mem => {
+      if (mem?.user?.name && mem.user.name !== 'Friend') {
+        userName = mem.user.name
+        document.getElementById('user-name').value = userName
+      }
+      if (mem?.user?.language) {
+        userLang = mem.user.language
+        document.querySelectorAll('[data-lang]').forEach(b => {
+          b.classList.toggle('active', b.dataset.lang === userLang)
+        })
+      }
+      if (mem?.style?.totalMessages > 0) {
+        console.log('[Aibo] Loaded memory —', mem.style.totalMessages, 'messages, tone:', mem.style.tone)
+      }
+    })
+    document.getElementById('roam-toggle').addEventListener('click', function() {
+      roamMode = !roamMode; this.classList.toggle('on', roamMode)
+    })
+    document.getElementById('trail-toggle').addEventListener('click', function() {
+      trailOn = !trailOn; this.classList.toggle('on', trailOn)
+      if (!trailOn) trail.forEach(t => { t.life = 0; t.el.style.display = 'none' })
+    })
+    document.getElementById('sensitivity-slider').addEventListener('input', function() {
+      speed = +this.value; document.getElementById('sensitivity-val').textContent = this.value
+    })
+    document.getElementById('orbit-slider').addEventListener('input', function() {
+      orbitR = +this.value; document.getElementById('orbit-val').textContent = this.value
+    })
+    document.getElementById('toolbar-timer').addEventListener('input', function() {
+      toolbarDismiss = +this.value
+      document.getElementById('toolbar-timer-val').textContent = this.value + 's'
+    })
+    document.getElementById('answer-timer').addEventListener('input', function() {
+      responseBubbleDismiss = +this.value
+      document.getElementById('answer-timer-val').textContent = this.value + 's'
+    })
+    document.getElementById('size-slider').addEventListener('input', function() {
+      ORB_SIZE = +this.value
+      document.getElementById('size-val').textContent = this.value
+      document.documentElement.style.setProperty('--orb-size', ORB_SIZE + 'px')
+      orbWrap.style.width  = ORB_SIZE + 'px'
+      orbWrap.style.height = ORB_SIZE + 'px'
+    })
+    document.querySelectorAll('.color-swatch').forEach(sw => {
+      sw.addEventListener('click', () => {
+        document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'))
+        sw.classList.add('active')
+        const c = JSON.parse(sw.dataset.color)
+        document.documentElement.style.setProperty('--orb-color', c.main)
+        document.documentElement.style.setProperty('--orb-glow',  c.glow)
+        document.documentElement.style.setProperty('--orb-dark',  c.dark)
+        document.documentElement.style.setProperty('--border',    c.main + '40')
+        trail.forEach(t => t.el.style.background = c.glow)
+      })
+    })
+
+    // ── TASK PANEL ──────────────────────────────────────────────────────────
+    const taskPanel    = document.getElementById('task-panel')
+    const taskInput    = document.getElementById('task-input')
+    const taskPreview  = document.getElementById('task-preview')
+    const taskPreviewCard = document.getElementById('task-preview-card')
+    let taskPanelOpen  = false
+    let parsedTask     = null
+
+    function openTaskPanel() {
+      taskPanelOpen = true
+      taskPanel.classList.add('visible')
+      positionTaskPanel()
+      setFrozen(true)
+      window.aibo.setIgnoreMouse(false)
+      setTimeout(() => taskInput.focus(), 100)
+    }
+
+    function closeTaskPanel() {
+      taskPanelOpen = false
+      taskPanel.classList.remove('visible')
+      taskPreview.style.display = 'none'
+      taskInput.value = ''
+      parsedTask = null
+      setFrozen(false)
+      updatePassthrough()
+    }
+
+    function positionTaskPanel() {
+      const pw = 320, ph = taskPanel.offsetHeight || 380
+      let px = ox + ORB_SIZE + 14
+      let py = oy + ORB_SIZE / 2 - ph / 2
+      if (px + pw > W - 10) px = ox - pw - 14
+      if (py < 10) py = 10
+      if (py + ph > H - 10) py = H - ph - 10
+      taskPanel.style.left = Math.round(px) + 'px'
+      taskPanel.style.top  = Math.round(py) + 'px'
+    }
+
+    // Build human-readable preview of a parsed task
+    function buildPreviewHTML(task) {
+      const icons = { email: '📧', file: '📁', calendar: '📅', browser: '🌐', unknown: '❓' }
+      const icon  = icons[task.type] || '❓'
+      let html = `<div style="margin-bottom:6px;font-weight:600;color:var(--orb-glow)">${icon} ${task.type.toUpperCase()}</div>`
+
+      if (task.type === 'email') {
+        html += `<div><span style="color:var(--text-muted)">To:</span> ${task.to || '?'}</div>`
+        html += `<div><span style="color:var(--text-muted)">Subject:</span> ${task.subject || '?'}</div>`
+        html += `<div style="margin-top:6px;padding:8px;background:var(--surface);border-radius:6px;font-size:12px;">${task.body || ''}</div>`
+      } else if (task.type === 'file') {
+        html += `<div><span style="color:var(--text-muted)">Action:</span> ${task.action}</div>`
+        html += `<div><span style="color:var(--text-muted)">Path:</span> ${task.path || '?'}</div>`
+        if (task.content) html += `<div style="margin-top:6px;padding:8px;background:var(--surface);border-radius:6px;font-size:12px;">${task.content.slice(0, 100)}</div>`
+      } else if (task.type === 'calendar') {
+        html += `<div><span style="color:var(--text-muted)">Event:</span> ${task.title}</div>`
+        html += `<div><span style="color:var(--text-muted)">Date:</span> ${task.date} at ${task.time || '09:00'}</div>`
+        html += `<div><span style="color:var(--text-muted)">Duration:</span> ${task.duration || 60} min</div>`
+      } else if (task.type === 'browser') {
+        html += `<div><span style="color:var(--text-muted)">Action:</span> ${task.action}</div>`
+        html += `<div><span style="color:var(--text-muted)">URL:</span> ${task.url || task.query || '?'}</div>`
+      } else {
+        html += `<div style="color:#f09b7a">Could not understand task. Try rephrasing.</div>`
+      }
+
+      const conf = Math.round((task.confidence || 0) * 100)
+      html += `<div style="margin-top:8px;font-size:11px;color:var(--text-muted)">Confidence: ${conf}%</div>`
+      return html
+    }
+
+    // Parse task button
+    document.getElementById('task-parse-btn').addEventListener('click', async () => {
+      const description = taskInput.value.trim()
+      if (!description) { showBubble('Type what you want Aibo to do'); return }
+
+      document.getElementById('task-parse-btn').textContent = '⏳ Thinking...'
+      document.getElementById('task-parse-btn').disabled = true
+      setState('thinking')
+
+      const result = await window.aibo.parseTask(description)
+
+      document.getElementById('task-parse-btn').textContent = '✨ Figure out what to do'
+      document.getElementById('task-parse-btn').disabled = false
+
+      if (result.ok && result.task) {
+        parsedTask = result.task
+        taskPreviewCard.innerHTML = buildPreviewHTML(result.task)
+        taskPreview.style.display = 'block'
+        positionTaskPanel()
+        setState('speaking')
+        showBubble('Here\'s what I\'ll do — confirm to execute', 4000)
+      } else {
+        showBubble('Could not parse task — try rephrasing', 3000)
+        setState('idle')
+      }
+    })
+
+    // Confirm execution
+    document.getElementById('task-confirm-btn').addEventListener('click', async () => {
+      if (!parsedTask) return
+
+      if (parsedTask.type === 'unknown') {
+        showBubble('Can\'t execute unknown task — try rephrasing', 3000)
+        return
+      }
+
+      document.getElementById('task-confirm-btn').textContent = '⏳ Executing...'
+      document.getElementById('task-confirm-btn').disabled = true
+      setState('thinking')
+
+      const result = await window.aibo.executeTask(parsedTask)
+
+      document.getElementById('task-confirm-btn').textContent = '✅ Confirm & Execute'
+      document.getElementById('task-confirm-btn').disabled = false
+
+      if (result.ok) {
+        showBubble(`✅ Done! ${result.message}`, 5000)
+        setState('speaking')
+        setTimeout(() => setState('idle'), 3000)
+        closeTaskPanel()
+      } else {
+        showBubble(`❌ ${result.error}`, 5000)
+        setState('idle')
+      }
+    })
+
+    document.getElementById('task-cancel-btn').addEventListener('click', () => {
+      taskPreview.style.display = 'none'
+      parsedTask = null
+      setState('idle')
+    })
+
+    document.getElementById('task-panel-close').addEventListener('click', closeTaskPanel)
+
+    // Knowledge button
+    document.getElementById('knowledge-btn').addEventListener('click', () => {
+      closePanel()
+      openKnowledgePanel()
+    })
+
+    // Tasks button
+    document.getElementById('tasks-btn').addEventListener('click', () => {
+      closePanel()
+      openTaskPanel()
+    })
+
+    // ── KNOWLEDGE PANEL ──────────────────────────────────────────────────
+    const knowledgePanel = document.getElementById('knowledge-panel')
+    let knowledgePanelOpen = false
+
+    function positionKnowledgePanel() {
+      const pw = 320, ph = knowledgePanel.offsetHeight || 360
+      let px = ox + ORB_SIZE + 14
+      let py = oy + ORB_SIZE/2 - ph/2
+      if (px + pw > W - 10) px = ox - pw - 14
+      if (py < 10) py = 10
+      if (py + ph > H - 10) py = H - ph - 10
+      knowledgePanel.style.left = Math.round(px) + 'px'
+      knowledgePanel.style.top  = Math.round(py) + 'px'
+    }
+
+    async function openKnowledgePanel() {
+      knowledgePanelOpen = true
+      knowledgePanel.classList.add('visible')
+      positionKnowledgePanel()
+      setFrozen(true)
+      window.aibo.setIgnoreMouse(false)
+      await updateKnowledgeStats()
+      await updateFeedList()
+    }
+
+    function closeKnowledgePanel() {
+      knowledgePanelOpen = false
+      knowledgePanel.classList.remove('visible')
+      setFrozen(false)
+      updatePassthrough()
+    }
+
+    async function updateKnowledgeStats() {
+      const stats = await window.aibo.knowledgeStats()
+      const el    = document.getElementById('knowledge-stats')
+      if (stats) {
+        const byType = Object.entries(stats.byType || {})
+          .map(([t, c]) => `${t}: ${c}`).join(' · ')
+        el.textContent = `${stats.total} items learned · ${byType || 'none yet'}`
+      }
+    }
+
+    async function updateFeedList() {
+      const feeds = await window.aibo.getFeeds()
+      const el    = document.getElementById('feed-list')
+      if (!feeds || feeds.length === 0) {
+        el.textContent = 'No feeds yet — click Night Crawl to auto-subscribe'
+        return
+      }
+      el.innerHTML = feeds.map(f =>
+        `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+          <span>${f.topic} — ${f.url.replace('https://', '').slice(0, 30)}...</span>
+          <button onclick="removeFeed('${f.url}')" style="background:transparent;border:none;color:#f09b7a;cursor:pointer;font-size:10px;">✕</button>
+        </div>`
+      ).join('')
+    }
+
+    async function removeFeed(url) {
+      await window.aibo.removeFeed(url)
+      await updateFeedList()
+    }
+
+    document.getElementById('knowledge-panel-close').addEventListener('click', closeKnowledgePanel)
+    document.getElementById('knowledge-done-btn').addEventListener('click', closeKnowledgePanel)
+
+    document.getElementById('learn-url-btn').addEventListener('click', async () => {
+      const url = document.getElementById('learn-url-input').value.trim()
+      if (!url || !url.startsWith('http')) { showBubble('Enter a valid URL'); return }
+      showBubble('Learning from URL...', 8000)
+      setState('thinking')
+      const result = await window.aibo.learnUrl(url)
+      document.getElementById('learn-url-input').value = ''
+      if (result.ok) {
+        showBubble(`Learned: ${result.topic?.slice(0, 40)}`, 4000)
+        setState('speaking')
+        await updateKnowledgeStats()
+      } else {
+        showBubble('Could not read that URL', 3000)
+      }
+      setState('idle')
+    })
+
+    document.getElementById('learn-topic-btn').addEventListener('click', async () => {
+      const topic = document.getElementById('learn-topic-input').value.trim()
+      if (!topic) { showBubble('Enter a topic to learn'); return }
+      showBubble(`Learning about ${topic}...`, 8000)
+      setState('thinking')
+      const result = await window.aibo.learnTopic(topic)
+      document.getElementById('learn-topic-input').value = ''
+      if (result.ok) {
+        showBubble(`Learned ${result.learned} things about ${topic}`, 4000)
+        setState('speaking')
+        await updateKnowledgeStats()
+      } else {
+        showBubble('Could not learn that topic', 3000)
+      }
+      setState('idle')
+    })
+
+    // Enter key on topic input
+    document.getElementById('learn-topic-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('learn-topic-btn').click()
+    })
+    document.getElementById('learn-url-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('learn-url-btn').click()
+    })
+
+    document.getElementById('crawler-btn').addEventListener('click', async () => {
+      showBubble('Night crawler starting...', 4000)
+      setState('thinking')
+      const result = await window.aibo.startCrawler()
+      showBubble(`Crawling: ${result.interests?.join(', ')}`, 5000)
+    })
+
+    document.getElementById('refresh-feeds-btn').addEventListener('click', async () => {
+      showBubble('Refreshing all feeds...', 4000)
+      await window.aibo.refreshFeeds()
+      showBubble('Feeds updated!', 3000)
+      await updateKnowledgeStats()
+    })
+
+    // Knowledge updates from night crawler
+    window.aibo.onKnowledgeUpdate(data => {
+      showBubble(`Learned: ${data.topic?.slice(0, 40)} (${data.count} total)`, 3000)
+    })
+
+    // Chat button in settings panel
+    document.getElementById('chat-btn').addEventListener('click', () => {
+      closePanel()
+      toggleChat()
+    })
+
+    // ── CHAT SYSTEM ──────────────────────────────────────────────────────
+    const chatBubble    = document.getElementById('chat-bubble')
+    const chatMessages  = document.getElementById('chat-messages')
+    const chatInput     = document.getElementById('chat-input')
+    const chatSendBtn   = document.getElementById('chat-send-btn')
+    const chatVoiceBtn  = document.getElementById('chat-voice-btn')
+    const chatVoiceStat = document.getElementById('chat-voice-status')
+
+    let chatOpen           = false
+    let chatHistory        = []
+    let isRecording        = false
+    let chatHistoryVisible = false
+
+    // Done button closes chat
+    document.getElementById('chat-done-btn').addEventListener('click', closeChat)
+
+    // History toggle
+    document.getElementById('chat-history-toggle').addEventListener('click', () => {
+      chatHistoryVisible = !chatHistoryVisible
+      chatBubble.classList.toggle('expanded', chatHistoryVisible)
+      document.getElementById('chat-history-toggle').textContent = chatHistoryVisible ? 'HIDE' : 'SHOW'
+      if (chatHistoryVisible) chatMessages.scrollTop = chatMessages.scrollHeight
+      positionChatBubble()
+    })
+
+    // Auto expand when Aibo replies
+    function expandChatForReply() {
+      if (!chatHistoryVisible) {
+        chatHistoryVisible = true
+        chatBubble.classList.add('expanded')
+        document.getElementById('chat-history-toggle').textContent = 'HIDE'
+        positionChatBubble()
+      }
+      chatMessages.scrollTop = chatMessages.scrollHeight
+    }
+    let recognition     = null
+
+    function positionChatBubble() {
+      const cw = 320
+      const ch = chatBubble.offsetHeight || 400
+      let cx = ox + ORB_SIZE + 14
+      let cy = oy + ORB_SIZE/2 - ch/2
+      if (cx + cw > W - 10) cx = ox - cw - 14
+      if (cy < 10) cy = 10
+      if (cy + ch > H - 10) cy = H - ch - 10
+      chatBubble.style.left = Math.round(cx) + 'px'
+      chatBubble.style.top  = Math.round(cy) + 'px'
+    }
+
+    function openChat() {
+      chatOpen = true
+      chatBubble.classList.add('show')
+      positionChatBubble()
+      setFrozen(true)
+      stopAutoRoam()
+      window.aibo.setIgnoreMouse(false)
+      setTimeout(() => chatInput.focus(), 100)
+
+      // Only greet on very first open — and keep it natural
+      if (chatHistory.length === 0) {
+        const hour = new Date().getHours()
+        const openers = hour < 12
+          ? ["Morning. What's good?", "You're up early. What's on your mind?", "Morning — need something?"]
+          : hour < 17
+          ? ["What's up?", "Need something?", "Wassup, what do you need?", "Talk to me."]
+          : hour < 21
+          ? ["Evening. What's going on?", "What do you need?", "Still working? Talk to me."]
+          : ["Late night. What's up?", "Still at it? What do you need?", "You good? What's on your mind?"]
+
+        const greeting = openers[Math.floor(Math.random() * openers.length)]
+        addChatMessage('aibo', greeting)
+        window.aibo.speak(greeting)
+      }
+    }
+
+    function closeChat() {
+      chatOpen = false
+      chatHistoryVisible = false
+      chatBubble.classList.remove('show', 'expanded')
+      document.getElementById('chat-history-toggle').textContent = 'SHOW'
+      setFrozen(false)
+      updatePassthrough()
+    }
+
+    function toggleChat() {
+      chatOpen ? closeChat() : openChat()
+    }
+
+    function addChatMessage(role, text) {
+      const msg = document.createElement('div')
+      msg.className = `chat-msg ${role}`
+
+      if (role === 'aibo') {
+        // Aibo messages get a copy button
+        const textEl = document.createElement('div')
+        textEl.style.flex = '1'
+        textEl.textContent = text
+
+        const copyBtn = document.createElement('button')
+        copyBtn.textContent = '⧉'
+        copyBtn.title = 'Copy'
+        copyBtn.style.cssText = `
+          background: transparent; border: none;
+          color: var(--text-muted); cursor: pointer;
+          font-size: 11px; padding: 2px 4px;
+          opacity: 0; transition: opacity .15s;
+          align-self: flex-start; flex-shrink: 0;
+          margin-top: 2px;
+        `
+        copyBtn.addEventListener('click', () => {
+          navigator.clipboard.writeText(text)
+          copyBtn.textContent = '✓'
+          copyBtn.style.color = 'var(--orb-glow)'
+          setTimeout(() => {
+            copyBtn.textContent = '⧉'
+            copyBtn.style.color = 'var(--text-muted)'
+          }, 1500)
+        })
+
+        msg.style.cssText = 'display:flex; align-items:flex-start; gap:6px;'
+        msg.addEventListener('mouseenter', () => copyBtn.style.opacity = '1')
+        msg.addEventListener('mouseleave', () => copyBtn.style.opacity = '0')
+        msg.appendChild(textEl)
+        msg.appendChild(copyBtn)
+      } else {
+        msg.textContent = text
+      }
+
+      chatMessages.appendChild(msg)
+      chatMessages.scrollTop = chatMessages.scrollHeight
+      return msg
+    }
+
+    function addTypingIndicator() {
+      const msg = document.createElement('div')
+      msg.className = 'chat-msg aibo typing'
+      msg.id = 'chat-typing'
+      msg.innerHTML = '<div class="dots"><span></span><span></span><span></span></div>'
+      chatMessages.appendChild(msg)
+      chatMessages.scrollTop = chatMessages.scrollHeight
+      return msg
+    }
+
+    async function sendChatMessage(text) {
+      if (!text.trim()) return
+      chatInput.value = ''
+
+      // Add user message to UI and history
+      addChatMessage('user', text)
+      chatHistory.push({ role: 'user', content: text })
+
+      // Show typing indicator
+      addTypingIndicator()
+      setState('thinking')
+
+      // Build clean conversation history
+      const recentMessages = chatHistory
+        .filter(m => m.role === 'user' || m.role === 'aibo')
+        .slice(-16)
+
+      const dialogue = recentMessages
+        .map(m => `${m.role === 'user' ? userName : 'Aibo'}: ${m.content}`)
+        .join('\n')
+
+      // Strict anti-repetition prompt
+      // The [INST] tags help Mistral understand this is an instruction not dialogue
+      const prompt = dialogue.length > 0
+        ? `${dialogue}\nAibo (respond naturally, never repeat what was just said, be brief):`
+        : text
+
+      let result
+      try {
+        result = await window.aibo.askOllama('chat', prompt)
+      } catch(e) {
+        result = { ok: false, error: e.message }
+      }
+
+      // Remove typing indicator
+      document.getElementById('chat-typing')?.remove()
+
+      if (result && result.ok) {
+        let reply = result.reply
+
+        // Strip filler openers
+        reply = reply
+          .replace(/^(Certainly|Absolutely|Great|Sure|Of course|I'd be happy|I understand|I see)[^.!?]*[.!?]\s*/i, '')
+          .replace(/^(Hey|Hi|Hello)\s+\w+[,!]?\s*/i, '') // strip "Hey Goldie," etc
+          .replace(/^\d+\.\s+/gm, '')   // remove numbered lists
+          .replace(/^[-•*]\s+/gm, '')   // remove bullets
+          .trim()
+
+        // Strip if Aibo literally repeated the last user message
+        const lastUserMsg = chatHistory
+          .filter(m => m.role === 'user')
+          .slice(-1)[0]?.content || ''
+
+        if (lastUserMsg.length > 10 && reply.toLowerCase().startsWith(lastUserMsg.toLowerCase().slice(0, 30))) {
+          reply = reply.slice(lastUserMsg.length).trim()
+        }
+
+        if (!reply) reply = 'Yeah.' // fallback if everything got stripped
+
+        chatHistory.push({ role: 'aibo', content: reply })
+        addChatMessage('aibo', reply)
+        expandChatForReply()
+        window.aibo.speak(reply)
+        setState('speaking')
+        setTimeout(() => setState('idle'), 3000)
+      } else {
+        addChatMessage('aibo', 'Something went wrong — try again')
+        expandChatForReply()
+        setState('idle')
+      }
+
+      positionChatBubble()
+    }
+
+    // Send on button click
+    chatSendBtn.addEventListener('click', () => {
+      sendChatMessage(chatInput.value.trim())
+    })
+
+    // Send on Enter key
+    chatInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault()
+        sendChatMessage(chatInput.value.trim())
+      }
+    })
+
+    // ── VOICE INPUT via Web Speech API ──
+    function initSpeechRecognition() {
+      if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        chatVoiceBtn.style.display = 'none'
+        console.log('[Aibo Chat] Speech recognition not available')
+        return
+      }
+
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+      recognition = new SpeechRecognition()
+      recognition.continuous    = false
+      recognition.interimResults = true
+      recognition.lang          = 'en-US'
+
+      recognition.onstart = () => {
+        isRecording = true
+        chatVoiceBtn.classList.add('recording')
+        chatVoiceStat.textContent = 'Listening...'
+        chatInput.placeholder = 'Listening...'
+      }
+
+      recognition.onresult = e => {
+        const transcript = Array.from(e.results)
+          .map(r => r[0].transcript)
+          .join('')
+        chatInput.value = transcript
+        chatVoiceStat.textContent = transcript.length > 40
+          ? transcript.slice(0, 40) + '...'
+          : transcript
+      }
+
+      recognition.onend = () => {
+        isRecording = false
+        chatVoiceBtn.classList.remove('recording')
+        chatVoiceStat.textContent = ''
+        chatInput.placeholder = 'Talk to Aibo...'
+
+        const text = chatInput.value.trim()
+        if (text) sendChatMessage(text)
+      }
+
+      recognition.onerror = e => {
+        isRecording = false
+        chatVoiceBtn.classList.remove('recording')
+        chatVoiceStat.textContent = 'Could not hear you — try again'
+        setTimeout(() => chatVoiceStat.textContent = '', 2000)
+      }
+    }
+
+    // Hold to speak
+    chatVoiceBtn.addEventListener('mousedown', () => {
+      if (!recognition) return
+      if (isRecording) {
+        recognition.stop()
+      } else {
+        recognition.start()
+      }
+    })
+
+    // Also open chat from Ctrl+Shift+Space if no text selected
+    // Override the wake trigger
+    const _origOnTrigger = null
+    window.aibo.onTriggerSelection(() => {
+      console.log('[Aibo] Wake triggered')
+      if (lastSelection && lastSelection.length > 2) {
+        playWakeAnimation()
+        showToolbarNearOrb()
+        showBubble('What should I do with this?')
+      } else {
+        // No selection — open chat
+        playWakeAnimation()
+        if (!chatOpen) openChat()
+        else chatInput.focus()
+      }
+    })
+
+    // Position chat in tick loop
+    // (added to existing tick position checks)
+    initSpeechRecognition()
+
+    // Gmail connect button
+    document.getElementById('gmail-connect-btn').addEventListener('click', async () => {
+      const status = await window.aibo.gmailStatus()
+      if (status.connected) {
+        await window.aibo.gmailDisconnect()
+        document.getElementById('gmail-connect-btn').textContent = 'Connect'
+        showBubble('Gmail disconnected', 3000)
+      } else {
+        showBubble('Opening Gmail auth...', 3000)
+        const result = await window.aibo.gmailConnect()
+        if (result.ok) {
+          document.getElementById('gmail-connect-btn').textContent = '✅ Connected'
+          showBubble('Gmail connected!', 3000)
+        } else {
+          showBubble('Gmail connection failed', 3000)
+        }
+      }
+    })
+
+    // Check Gmail status on load
+    window.aibo.gmailStatus().then(status => {
+      if (status.connected) {
+        document.getElementById('gmail-connect-btn').textContent = '✅ Connected'
+      }
+    })
+
+    orbWrap.style.position = 'fixed'
+    orbWrap.style.width    = ORB_SIZE + 'px'
+    orbWrap.style.height   = ORB_SIZE + 'px'
+    orbWrap.style.left     = ox + 'px'
+    orbWrap.style.top      = oy + 'px'
+
+    window.addEventListener('resize', () => { W = window.innerWidth; H = window.innerHeight })
+
+    // ── SITUATIONAL AWARENESS ──────────────────────────────────────────────
+    const appReactions = {
+      'coding':     [ 'Dev mode activated.', 'I\'ll stay quiet. Ship it.', 'Writing code? I\'m watching.' ],
+      'terminal':   [ 'Terminal open. I\'m on alert.', 'Running commands? I\'m here if something breaks.' ],
+      'browsing':   [ 'Surfing the web?', 'I can summarize anything you find.', 'Need me to read that?' ],
+      'data':       [ 'Excel? I can help analyze that.', 'Spreadsheet mode. Need any formulas?' ],
+      'writing':    [ 'Writing mode. I\'ll be quiet.', 'Focus. I\'m here if you need me.' ],
+      'meeting':    [ 'Meeting detected. Going quiet.', 'I\'ll hold my thoughts.' ],
+      'music':      [ 'Music on. Respect.', 'Good taste.' ],
+      'design':     [ 'Design mode. Creative energy detected.', 'Building something visual?' ],
+      'social':     [ 'Social mode. Taking a break?', 'I\'ll chill.' ],
+      'notes':      [ 'Taking notes? I can help organize later.', 'Writing things down.' ],
+    }
+
+    const sessionAlerts = {
+      'long-session':       `You've been working an hour straight. Take a 5 minute break.`,
+      'very-long-session':  `2 hours. Seriously — stretch, drink some water.`,
+      'marathon-session':   `4 hours. I'm genuinely concerned. Step away for a bit.`,
+    }
+
+    let lastContextMode = ''
+
+    window.aibo.onContextUpdate(ctx => {
+      // Update mood based on context
+      if (ctx.mood && ctx.mood !== currentMood) {
+        setMood(ctx.mood)
+      }
+
+      // Only react if mode changed and not quiet
+      if (ctx.mode !== lastContextMode) {
+        lastContextMode = ctx.mode
+
+        // React to app change with a quip
+        const reactions = appReactions[ctx.mode]
+        if (reactions && !ctx.quiet) {
+          const quip = reactions[Math.floor(Math.random() * reactions.length)]
+          setTimeout(() => {
+            if (document.body.dataset.state === 'idle') {
+              showBubble(quip, 3000)
+              // Speak reaction occasionally (not every time)
+              if (Math.random() < 0.3) window.aibo.speak(quip)
+            }
+          }, 2000)
+        }
+
+        console.log(`[Aibo] Context: ${ctx.label} → mode: ${ctx.mode}, mood: ${ctx.mood}`)
+      }
+    })
+
+    window.aibo.onContextAlert(alert => {
+      const msg = sessionAlerts[alert.type]
+      if (msg) {
+        showBubble(msg, 6000)
+        window.aibo.speak(msg)
+        setState('speaking')
+        setTimeout(() => setState('idle'), 4000)
+      }
+    })
+    // Extract config application into reusable function
+    function applyConfig(config) {
+      if (!config) return
+      console.log('[Aibo] Applying config:', config.shape, config.color?.main)
+
+      if (config.name && config.name !== 'Friend') {
+        userName = config.name
+        const nameInput = document.getElementById('user-name')
+        if (nameInput) nameInput.value = config.name
+        window.aibo.updateMemory({ user: { name: config.name } })
+      }
+
+      if (config.color) {
+        const c = config.color
+        document.documentElement.style.setProperty('--orb-color', c.main)
+        document.documentElement.style.setProperty('--orb-glow',  c.glow)
+        document.documentElement.style.setProperty('--orb-dark',  c.dark)
+        document.documentElement.style.setProperty('--border',    c.main + '40')
+        trail.forEach(t => t.el.style.background = c.glow)
+        document.querySelectorAll('.color-swatch').forEach(s => {
+          try {
+            const sc = JSON.parse(s.dataset.color)
+            s.classList.toggle('active', sc.main === c.main)
+          } catch(e) {}
+        })
+      }
+
+      if (config.shape) {
+        const shapeSkinMap = { ball:'ball', spirit:'spirit', cube:'cube', tetra:'tetra', diamond:'diamond', torus:'torus' }
+        const skin = shapeSkinMap[config.shape] || 'ball'
+        setSkin(skin)
+        document.querySelectorAll('.skin-btn').forEach(b => {
+          b.classList.toggle('active', b.dataset.skin === skin)
+        })
+        console.log('[Aibo] Shape applied:', skin)
+      }
+
+      if (config.language) {
+        userLang = config.language
+        document.querySelectorAll('[data-lang]').forEach(b => {
+          b.classList.toggle('active', b.dataset.lang === userLang)
+        })
+      }
+
+      console.log('[Aibo] Config applied ✓')
+    }
+
+    // Listen for config from main process
+    window.aibo.onAiboConfig(config => applyConfig(config))
+
+    // Backup — request config directly after 1 second
+    // Catches cases where IPC event fired before listener was registered
+    setTimeout(async () => {
+      try {
+        const config = await window.aibo.getConfig()
+        if (config) {
+          console.log('[Aibo] Config loaded via backup request')
+          applyConfig(config)
+        }
+      } catch(e) {
+        console.log('[Aibo] Backup config request failed:', e.message)
+      }
+    }, 1000)
+
+    // Receive display info from main process
+    // Track whether this is the primary display
+    let isPrimaryDisplay = true // assume primary until told otherwise
+
+    // Only the primary display shows the orb
+    // Secondary displays are passthrough only - just track cursor
+    window.aibo.onDesktopBounds(bounds => {
+      W = bounds.width
+      H = bounds.height
+      isPrimaryDisplay = bounds.isPrimary !== false
+
+      console.log('[Aibo] Display', bounds.displayIndex + 1,
+        isPrimaryDisplay ? '(primary — orb active)' : '(secondary — passthrough only)')
+
+      if (!isPrimaryDisplay) {
+        // Hide everything on secondary displays
+        orbWrap.style.display        = 'none'
+        bubbleEl.style.display       = 'none'
+        document.getElementById('chat-bubble').style.display    = 'none'
+        document.getElementById('sel-toolbar').style.display    = 'none'
+        document.getElementById('response-bubble').style.display = 'none'
+        document.getElementById('panel').style.display          = 'none'
+        document.getElementById('task-panel').style.display     = 'none'
+        document.getElementById('ai-modal').style.display       = 'none'
+        document.getElementById('cursor').style.display         = 'none'
+        console.log('[Aibo] Secondary display — all UI hidden')
+      }
+    })
+    tick()
+    resetIdleTimer()
+
+    // ── TRAY EVENTS ──
+    // Tray icon click toggles orb visibility
+    window.aibo.onOrbVisibility(visible => {
+      orbWrap.style.display  = visible ? 'block' : 'none'
+      bubbleEl.style.display = visible ? '' : 'none'
+      console.log('[Aibo] Orb', visible ? 'shown' : 'hidden', 'from tray')
+    })
+
+    // Tray → open settings panel
+    window.aibo.onOpenPanel(() => {
+      if (!panelOpen) openPanel()
+    })
+
+    // Tray → open tasks panel
+    window.aibo.onOpenTasks(() => {
+      if (!taskPanelOpen) openTaskPanel()
+    })
+
+    // Wake animation + greeting — waits until voice server is ready
+    async function waitForVoiceAndGreet() {
+      const greeting = buildGreeting()
+
+      // Show visual greeting immediately
+      setTimeout(() => {
+        playWakeAnimation()
+        setState('speaking')
+        showBubble(greeting, 5000)
+        setTimeout(() => setState('idle'), 2500)
+      }, 1000)
+
+      // Poll voice server until it responds, then speak
+      let attempts = 0
+      const maxAttempts = 20 // try for up to 20 seconds
+
+      const poll = async () => {
+        attempts++
+        try {
+          const result = await window.aibo.speak(greeting)
+          if (result && result.ok) {
+            console.log('[Aibo] Greeting spoken after', attempts, 'attempt(s)')
+            return
+          }
+        } catch(e) {}
+
+        if (attempts < maxAttempts) {
+          setTimeout(poll, 1000) // retry every second
+        } else {
+          console.log('[Aibo] Voice server did not respond — greeting skipped')
+        }
+      }
+
+      // Start polling after 2 seconds
+      setTimeout(poll, 2000)
+    }
+
+    // Only greet and animate on primary display
+    // Wait a bit for onDesktopBounds to fire first (100ms is enough)
+    setTimeout(() => {
+      if (isPrimaryDisplay) {
+        waitForVoiceAndGreet()
+      } else {
+        console.log('[Aibo] Secondary display — skipping greeting')
+      }
+    }, 200)
+
+    console.log('[Aibo] Ready — running in system tray')
+  </script>
+</body>
+</html>

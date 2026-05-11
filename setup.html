@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Aibo Setup</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --accent: #6C5DD3;
+      --accent-glow: #9b8fef;
+      --bg: #060610;
+      --surface: #0a0a1e;
+      --surface2: #0f0f28;
+      --text: #e0dff8;
+      --text-muted: #4a4a80;
+      --border: rgba(108,93,211,0.35);
+      --font: 'Rajdhani', sans-serif;
+      --mono: 'Share Tech Mono', monospace;
+    }
+
+    html, body {
+      width: 100vw; height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      overflow: hidden;
+      user-select: none;
+    }
+
+    /* ── SHARP GRID BACKGROUND ── */
+    .bg {
+      position: fixed; inset: 0; z-index: 0;
+      background:
+        linear-gradient(rgba(108,93,211,0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(108,93,211,0.06) 1px, transparent 1px);
+      background-size: 32px 32px;
+    }
+
+    /* Corner brackets */
+    .corner { position: fixed; width: 40px; height: 40px; z-index: 2; }
+    .corner.tl { top: 16px; left: 16px; border-top: 1px solid var(--accent); border-left: 1px solid var(--accent); }
+    .corner.tr { top: 16px; right: 16px; border-top: 1px solid var(--accent); border-right: 1px solid var(--accent); }
+    .corner.bl { bottom: 16px; left: 16px; border-bottom: 1px solid var(--accent); border-left: 1px solid var(--accent); }
+    .corner.br { bottom: 16px; right: 16px; border-bottom: 1px solid var(--accent); border-right: 1px solid var(--accent); }
+
+    /* Scan line */
+    .scan { position: fixed; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--accent-glow), transparent); animation: scan 6s linear infinite; z-index: 3; opacity: 0.3; }
+    @keyframes scan { from{top:0} to{top:100vh} }
+
+    /* Progress bar */
+    .progress-bar {
+      position: fixed; top: 0; left: 0; right: 0; height: 2px;
+      background: var(--surface2); z-index: 10;
+    }
+    .progress-fill {
+      height: 100%; background: var(--accent);
+      transition: width 0.4s ease; width: 0%;
+    }
+
+    /* Step indicator */
+    .step-indicator {
+      position: fixed; top: 20px; right: 24px;
+      font-family: var(--mono); font-size: 11px;
+      color: var(--text-muted); letter-spacing: 2px; z-index: 10;
+    }
+
+    /* ── MAIN ── */
+    .setup {
+      position: relative; z-index: 1;
+      width: 100vw; height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .step {
+      display: none; flex-direction: column;
+      align-items: center; width: 100%; max-width: 720px;
+      padding: 0 48px;
+      animation: step-in 0.35s ease;
+    }
+    .step.active { display: flex; }
+    @keyframes step-in {
+      from { opacity: 0; transform: translateX(20px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    /* ── TYPE ── */
+    .label {
+      font-family: var(--mono); font-size: 11px;
+      color: var(--accent); letter-spacing: 3px;
+      text-transform: uppercase; margin-bottom: 12px;
+    }
+
+    .title {
+      font-size: 48px; font-weight: 700;
+      letter-spacing: 4px; text-transform: uppercase;
+      line-height: 1.1; margin-bottom: 16px; text-align: center;
+    }
+    .title span { color: var(--accent-glow); }
+
+    .sub {
+      font-family: var(--mono); font-size: 12px;
+      color: var(--text-muted); margin-bottom: 40px;
+      text-align: center; letter-spacing: 1px;
+    }
+
+    /* ── ORB PREVIEW ── */
+    .orb-wrap {
+      width: 100px; height: 100px;
+      position: relative; margin: 0 auto 36px;
+      border-radius: 50%;
+    }
+    .orb-wrap .core {
+      width: 100%; height: 100%; border-radius: 50%;
+      background:
+        radial-gradient(circle at 28% 26%, rgba(255,255,255,1) 0%, rgba(255,255,255,0.5) 5%, transparent 20%),
+        radial-gradient(circle at 65% 70%, rgba(255,255,255,0.2) 0%, transparent 18%),
+        radial-gradient(circle at 38% 35%,
+          var(--pg, #9b8fef) 0%,
+          var(--pm, #6C5DD3) 35%,
+          var(--pd, #3a2fa0) 65%,
+          rgba(0,0,0,0.95) 100%);
+      animation: ob 3s ease-in-out infinite;
+      box-shadow:
+        inset -5px -5px 14px rgba(0,0,0,0.7),
+        inset 3px 3px 8px rgba(255,255,255,0.2);
+    }
+    .orb-wrap .shine {
+      position: absolute; top: 12%; left: 14%;
+      width: 38%; height: 25%;
+      background: radial-gradient(ellipse, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.5) 40%, transparent 75%);
+      border-radius: 50%; opacity: 0.95; filter: blur(0.5px);
+    }
+    .orb-wrap .halo {
+      position: absolute; inset: -22px; border-radius: 50%;
+      background: radial-gradient(circle, var(--pm, #6C5DD3) 0%, transparent 70%);
+      opacity: 0.25; z-index: -1;
+      animation: ob 3s ease-in-out infinite;
+    }
+    @keyframes ob { 0%,100%{opacity:.88;transform:scale(1)} 50%{opacity:1;transform:scale(1.07)} }
+
+    /* ── SHARP CARDS ── */
+    .grid { display: grid; gap: 8px; width: 100%; margin-bottom: 32px; }
+    .grid.c2 { grid-template-columns: 1fr 1fr; }
+    .grid.c3 { grid-template-columns: 1fr 1fr 1fr; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 0;  /* SHARP — no border radius */
+      padding: 18px 14px; cursor: pointer;
+      transition: all 0.15s; text-align: center;
+      position: relative; clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
+    }
+    .card::before {
+      content: ''; position: absolute;
+      top: 0; right: 0; width: 0; height: 0;
+      border-style: solid; border-width: 0 12px 12px 0;
+      border-color: transparent var(--accent) transparent transparent;
+      opacity: 0.5;
+    }
+    .card:hover { border-color: var(--accent-glow); background: rgba(108,93,211,0.08); }
+    .card.sel {
+      border-color: var(--accent-glow);
+      background: rgba(108,93,211,0.15);
+      box-shadow: inset 0 0 0 1px var(--accent), 0 0 20px rgba(108,93,211,0.2);
+    }
+    .card-icon { font-size: 26px; margin-bottom: 8px; }
+    .card-label { font-size: 13px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; font-family: var(--mono); }
+    .card-desc  { font-size: 10px; color: var(--text-muted); margin-top: 4px; letter-spacing: 1px; }
+
+    /* Shape SVG preview */
+    .shape-svg { width: 52px; height: 52px; margin: 0 auto 8px; }
+
+    /* ── COLORS ── */
+    .colors { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-bottom: 32px; }
+    .cswatch {
+      width: 40px; height: 40px; cursor: pointer;
+      border: 1px solid transparent;
+      clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+      transition: all 0.2s;
+    }
+    .cswatch:hover { transform: scale(1.15); }
+    .cswatch.sel { outline: 2px solid white; outline-offset: 3px; transform: scale(1.1); }
+
+    /* ── NAME INPUT ── */
+    .ninput {
+      width: 100%; max-width: 380px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 0;
+      padding: 14px 20px;
+      color: var(--text); font-family: var(--mono); font-size: 16px;
+      text-align: center; outline: none; margin-bottom: 32px;
+      letter-spacing: 2px;
+      transition: border-color 0.2s;
+      clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+    }
+    .ninput:focus { border-color: var(--accent-glow); }
+    .ninput::placeholder { color: var(--text-muted); letter-spacing: 1px; }
+
+    /* ── TOPICS ── */
+    .topics { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-bottom: 32px; }
+    .topic {
+      padding: 7px 14px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-muted); font-size: 12px;
+      cursor: pointer; transition: all 0.15s;
+      font-family: var(--mono); letter-spacing: 1px;
+      clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+    }
+    .topic:hover { border-color: var(--accent); color: var(--text); }
+    .topic.sel { background: var(--accent); border-color: var(--accent); color: white; }
+
+    /* ── BUTTONS ── */
+    .btns { display: flex; gap: 10px; }
+    .btn {
+      padding: 12px 36px;
+      font-family: var(--mono); font-size: 13px;
+      font-weight: 600; letter-spacing: 3px;
+      text-transform: uppercase; cursor: pointer;
+      transition: all 0.15s; border: 1px solid;
+      clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+    }
+    .btn-p {
+      background: var(--accent); color: white;
+      border-color: var(--accent);
+    }
+    .btn-p:hover { background: var(--accent-glow); border-color: var(--accent-glow); }
+    .btn-s {
+      background: transparent; color: var(--text-muted);
+      border-color: var(--border);
+    }
+    .btn-s:hover { border-color: var(--accent); color: var(--text); }
+
+    /* ── LAUNCH ── */
+    .launch {
+      display: none; position: fixed; inset: 0; z-index: 100;
+      background: var(--bg); flex-direction: column;
+      align-items: center; justify-content: center;
+    }
+    .launch.show { display: flex; }
+    .launch-orb {
+      width: 80px; height: 80px; margin-bottom: 32px;
+      animation: launch-p 0.8s ease-in-out infinite;
+    }
+    @keyframes launch-p { 0%,100%{transform:scale(1)} 50%{transform:scale(1.2)} }
+    .launch-bar {
+      width: 300px; height: 2px;
+      background: var(--surface2); margin-bottom: 20px;
+    }
+    .launch-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.5s ease; }
+    .launch-text {
+      font-family: var(--mono); font-size: 12px;
+      color: var(--accent); letter-spacing: 3px; text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+  <div class="bg"></div>
+  <div class="corner tl"></div>
+  <div class="corner tr"></div>
+  <div class="corner bl"></div>
+  <div class="corner br"></div>
+  <div class="scan"></div>
+  <div class="progress-bar"><div class="progress-fill" id="prog"></div></div>
+  <div class="step-indicator" id="step-ind">01 / 05</div>
+
+  <div class="setup">
+
+    <!-- STEP 0: Welcome -->
+    <div class="step active" id="step-0">
+      <div class="orb-wrap" id="welcome-orb">
+        <div class="halo"></div>
+        <div class="core"><div class="shine"></div></div>
+      </div>
+      <div class="label">// INITIALIZING</div>
+      <div class="title">MEET <span>AIBO</span></div>
+      <div class="sub">AI DESKTOP COMPANION — SETUP IN 60 SECONDS</div>
+      <div class="btns"><button class="btn btn-p" onclick="next()">BEGIN SETUP →</button></div>
+    </div>
+
+    <!-- STEP 1: Name -->
+    <div class="step" id="step-1">
+      <div class="label">// USER IDENTIFICATION</div>
+      <div class="title">WHAT SHOULD<br/><span>AIBO CALL YOU?</span></div>
+      <div class="sub">USED IN GREETINGS AND CONVERSATION</div>
+      <input class="ninput" id="name-input" type="text" placeholder="ENTER NAME..." maxlength="30"/>
+      <div class="btns">
+        <button class="btn btn-s" onclick="prev()">← BACK</button>
+        <button class="btn btn-p" onclick="next()">NEXT →</button>
+      </div>
+    </div>
+
+    <!-- STEP 2: Shape -->
+    <div class="step" id="step-2">
+      <div class="label">// ORB CONFIGURATION</div>
+      <div class="title">SELECT <span>SHAPE</span></div>
+      <div class="sub">HOW AIBO APPEARS ON YOUR SCREEN</div>
+      <div class="grid c3" id="shape-grid">
+
+        <div class="card sel" data-shape="ball" onclick="selShape(this)">
+          <svg class="shape-svg" viewBox="0 0 52 52">
+            <defs>
+              <radialGradient id="s1" cx="32%" cy="28%" r="70%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+                <stop offset="8%" stop-color="#c8c0ff" stop-opacity="0.8"/>
+                <stop offset="30%" stop-color="#9b8fef"/>
+                <stop offset="60%" stop-color="#6C5DD3"/>
+                <stop offset="85%" stop-color="#2a1f80"/>
+                <stop offset="100%" stop-color="#050510"/>
+              </radialGradient>
+              <radialGradient id="s1g" cx="65%" cy="68%" r="40%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="0.18"/>
+                <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+              </radialGradient>
+            </defs>
+            <circle cx="26" cy="26" r="23" fill="url(#s1)"/>
+            <circle cx="26" cy="26" r="23" fill="url(#s1g)"/>
+            <ellipse cx="18" cy="17" rx="8" ry="5" fill="white" opacity="0.9" transform="rotate(-15 18 17)"/>
+          </svg>
+          <div class="card-label">Sphere</div>
+          <div class="card-desc">Chrome metallic</div>
+        </div>
+
+        <div class="card" data-shape="spirit" onclick="selShape(this)">
+          <svg class="shape-svg" viewBox="0 0 52 52">
+            <defs>
+              <radialGradient id="s2" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="white" stop-opacity="0.95"/>
+                <stop offset="25%" stop-color="#c4b5fd" stop-opacity="0.7"/>
+                <stop offset="55%" stop-color="#6C5DD3" stop-opacity="0.4"/>
+                <stop offset="100%" stop-color="#6C5DD3" stop-opacity="0"/>
+              </radialGradient>
+            </defs>
+            <circle cx="26" cy="26" r="23" fill="url(#s2)"/>
+            <circle cx="26" cy="26" r="17" fill="none" stroke="#9b8fef" stroke-width="1.5" opacity="0.6"/>
+            <circle cx="26" cy="26" r="11" fill="none" stroke="#c4b5fd" stroke-width="1" opacity="0.5"/>
+            <circle cx="26" cy="26" r="5" fill="white" opacity="0.7"/>
+          </svg>
+          <div class="card-label">Spirit</div>
+          <div class="card-desc">Plasma energy</div>
+        </div>
+
+        <div class="card" data-shape="cube" onclick="selShape(this)">
+          <svg class="shape-svg" viewBox="0 0 52 52">
+            <defs>
+              <linearGradient id="s3t" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#d0d4e8"/>
+                <stop offset="20%" stop-color="#9098b8"/>
+                <stop offset="50%" stop-color="#6C5DD3"/>
+                <stop offset="80%" stop-color="#1a1830"/>
+                <stop offset="100%" stop-color="#060610"/>
+              </linearGradient>
+              <linearGradient id="s3s" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#9b8fef" stop-opacity="0.5"/>
+                <stop offset="100%" stop-color="#050510" stop-opacity="0.8"/>
+              </linearGradient>
+              <linearGradient id="s3r" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#3a2fa0" stop-opacity="0.6"/>
+                <stop offset="100%" stop-color="#0a0820" stop-opacity="0.9"/>
+              </linearGradient>
+            </defs>
+            <!-- Top face -->
+            <polygon points="26,4 46,14 26,24 6,14" fill="url(#s3t)"/>
+            <!-- Left face -->
+            <polygon points="6,14 26,24 26,44 6,34" fill="url(#s3s)"/>
+            <!-- Right face -->
+            <polygon points="46,14 26,24 26,44 46,34" fill="url(#s3r)"/>
+            <!-- Edge highlights -->
+            <polyline points="6,14 26,4 46,14" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="0.5"/>
+            <line x1="26" y1="4" x2="26" y2="24" stroke="rgba(255,255,255,0.3)" stroke-width="0.5"/>
+            <!-- Specular -->
+            <ellipse cx="20" cy="11" rx="5" ry="3" fill="white" opacity="0.35" transform="rotate(-15 20 11)"/>
+          </svg>
+          <div class="card-label">Cube</div>
+          <div class="card-desc">Gunmetal</div>
+        </div>
+
+        <div class="card" data-shape="tetra" onclick="selShape(this)">
+          <svg class="shape-svg" viewBox="0 0 52 52">
+            <defs>
+              <linearGradient id="s4l" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#f0d090"/>
+                <stop offset="15%" stop-color="#c89040"/>
+                <stop offset="40%" stop-color="#9b8fef"/>
+                <stop offset="70%" stop-color="#6C5DD3"/>
+                <stop offset="100%" stop-color="#0a0500"/>
+              </linearGradient>
+              <linearGradient id="s4r" x1="100%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#2a1000" stop-opacity="0.9"/>
+                <stop offset="100%" stop-color="#0a0500" stop-opacity="1"/>
+              </linearGradient>
+            </defs>
+            <!-- Left face (lit) -->
+            <polygon points="26,3 3,46 26,36" fill="url(#s4l)"/>
+            <!-- Right face (shadow) -->
+            <polygon points="26,3 49,46 26,36" fill="url(#s4r)"/>
+            <!-- Base -->
+            <polygon points="3,46 49,46 26,36" fill="#1a0800" opacity="0.9"/>
+            <!-- Edge highlight -->
+            <line x1="26" y1="3" x2="3" y2="46" stroke="rgba(255,220,100,0.4)" stroke-width="0.5"/>
+            <!-- Apex highlight -->
+            <ellipse cx="26" cy="8" rx="2" ry="4" fill="white" opacity="0.7"/>
+          </svg>
+          <div class="card-label">Tetra</div>
+          <div class="card-desc">Molten bronze</div>
+        </div>
+
+        <div class="card" data-shape="diamond" onclick="selShape(this)">
+          <svg class="shape-svg" viewBox="0 0 52 52">
+            <defs>
+              <linearGradient id="s5a" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#e0f0ff"/>
+                <stop offset="15%" stop-color="#a0c8f0"/>
+                <stop offset="35%" stop-color="#9b8fef"/>
+                <stop offset="60%" stop-color="#6C5DD3"/>
+                <stop offset="100%" stop-color="#000820"/>
+              </linearGradient>
+              <linearGradient id="s5b" x1="100%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#c0e0ff" stop-opacity="0.3"/>
+                <stop offset="50%" stop-color="#6C5DD3" stop-opacity="0.5"/>
+                <stop offset="100%" stop-color="#000010" stop-opacity="0.95"/>
+              </linearGradient>
+            </defs>
+            <!-- Left top -->
+            <polygon points="26,2 2,22 26,28" fill="url(#s5a)"/>
+            <!-- Right top -->
+            <polygon points="26,2 50,22 26,28" fill="url(#s5b)"/>
+            <!-- Left bottom -->
+            <polygon points="2,22 26,28 26,50" fill="#0a1030" opacity="0.95"/>
+            <!-- Right bottom -->
+            <polygon points="50,22 26,28 26,50" fill="#05080f" opacity="0.95"/>
+            <!-- Edge lines -->
+            <polygon points="26,2 2,22 26,50 50,22" fill="none" stroke="rgba(160,200,255,0.5)" stroke-width="0.5"/>
+            <!-- Top specular -->
+            <ellipse cx="18" cy="14" rx="6" ry="4" fill="white" opacity="0.7" transform="rotate(-20 18 14)"/>
+          </svg>
+          <div class="card-label">Diamond</div>
+          <div class="card-desc">Ice crystal</div>
+        </div>
+
+        <div class="card" data-shape="torus" onclick="selShape(this)">
+          <svg class="shape-svg" viewBox="0 0 52 52">
+            <defs>
+              <radialGradient id="s6r" cx="50%" cy="50%" r="50%">
+                <stop offset="55%" stop-color="transparent"/>
+                <stop offset="65%" stop-color="#9b8fef"/>
+                <stop offset="75%" stop-color="#6C5DD3"/>
+                <stop offset="85%" stop-color="#2a1f80"/>
+                <stop offset="95%" stop-color="transparent"/>
+              </radialGradient>
+              <!-- Outer glow ring -->
+              <filter id="glow">
+                <feGaussianBlur stdDeviation="1.5" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+            </defs>
+            <!-- Glow -->
+            <circle cx="26" cy="26" r="21" fill="none" stroke="#6C5DD3" stroke-width="12" opacity="0.3" filter="url(#glow)"/>
+            <!-- Main ring -->
+            <circle cx="26" cy="26" r="20" fill="none" stroke="url(#s6r)" stroke-width="9"/>
+            <!-- Top highlight -->
+            <path d="M 10 20 A 18 18 0 0 1 42 20" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2.5" stroke-linecap="round"/>
+            <!-- Bottom shadow -->
+            <path d="M 10 32 A 18 18 0 0 0 42 32" fill="none" stroke="rgba(0,0,0,0.6)" stroke-width="2" stroke-linecap="round"/>
+            <!-- Specular dots -->
+            <circle cx="14" cy="18" r="2" fill="white" opacity="0.8"/>
+          </svg>
+          <div class="card-label">Torus</div>
+          <div class="card-desc">Polished steel</div>
+        </div>
+
+      </div>
+      <div class="btns">
+        <button class="btn btn-s" onclick="prev()">← BACK</button>
+        <button class="btn btn-p" onclick="next()">NEXT →</button>
+      </div>
+    </div>
+
+    <!-- STEP 3: Color -->
+    <div class="step" id="step-3">
+      <div class="orb-wrap" id="color-orb">
+        <div class="halo"></div>
+        <div class="core"><div class="shine"></div></div>
+      </div>
+      <div class="label">// COLOR MATRIX</div>
+      <div class="title">SELECT <span>COLOR</span></div>
+      <div class="sub">AIBO'S ENERGY SIGNATURE</div>
+      <div class="colors" id="color-grid">
+        <div class="cswatch sel" data-c='{"main":"#6C5DD3","glow":"#9b8fef","dark":"#3a2fa0"}' style="background:linear-gradient(135deg,#9b8fef,#3a2fa0)" onclick="selColor(this)"></div>
+        <div class="cswatch" data-c='{"main":"#1D9E75","glow":"#5ee6c4","dark":"#085041"}' style="background:linear-gradient(135deg,#5ee6c4,#085041)" onclick="selColor(this)"></div>
+        <div class="cswatch" data-c='{"main":"#D85A30","glow":"#f09b7a","dark":"#993C1D"}' style="background:linear-gradient(135deg,#f09b7a,#993C1D)" onclick="selColor(this)"></div>
+        <div class="cswatch" data-c='{"main":"#378ADD","glow":"#85b9ed","dark":"#0C447C"}' style="background:linear-gradient(135deg,#85b9ed,#0C447C)" onclick="selColor(this)"></div>
+        <div class="cswatch" data-c='{"main":"#D4537E","glow":"#ed93b1","dark":"#4B1528"}' style="background:linear-gradient(135deg,#ed93b1,#4B1528)" onclick="selColor(this)"></div>
+        <div class="cswatch" data-c='{"main":"#BA7517","glow":"#FAC775","dark":"#412402"}' style="background:linear-gradient(135deg,#FAC775,#412402)" onclick="selColor(this)"></div>
+        <div class="cswatch" data-c='{"main":"#8B5CF6","glow":"#C4B5FD","dark":"#4C1D95"}' style="background:linear-gradient(135deg,#C4B5FD,#4C1D95)" onclick="selColor(this)"></div>
+        <div class="cswatch" data-c='{"main":"#06B6D4","glow":"#67E8F9","dark":"#0E7490"}' style="background:linear-gradient(135deg,#67E8F9,#0E7490)" onclick="selColor(this)"></div>
+        <div class="cswatch" data-c='{"main":"#EF4444","glow":"#FCA5A5","dark":"#991B1B"}' style="background:linear-gradient(135deg,#FCA5A5,#991B1B)" onclick="selColor(this)"></div>
+        <div class="cswatch" data-c='{"main":"#F59E0B","glow":"#FDE68A","dark":"#92400E"}' style="background:linear-gradient(135deg,#FDE68A,#92400E)" onclick="selColor(this)"></div>
+        <div class="cswatch" data-c='{"main":"#10B981","glow":"#6EE7B7","dark":"#064E3B"}' style="background:linear-gradient(135deg,#6EE7B7,#064E3B)" onclick="selColor(this)"></div>
+        <div class="cswatch" data-c='{"main":"#EC4899","glow":"#F9A8D4","dark":"#831843"}' style="background:linear-gradient(135deg,#F9A8D4,#831843)" onclick="selColor(this)"></div>
+      </div>
+      <div class="btns">
+        <button class="btn btn-s" onclick="prev()">← BACK</button>
+        <button class="btn btn-p" onclick="next()">NEXT →</button>
+      </div>
+    </div>
+
+    <!-- STEP 4: Interests -->
+    <div class="step" id="step-4">
+      <div class="label">// KNOWLEDGE MATRIX</div>
+      <div class="title">SELECT <span>INTERESTS</span></div>
+      <div class="sub">AIBO WILL AUTONOMOUSLY LEARN THESE TOPICS</div>
+      <div class="topics" id="topic-grid">
+        <div class="topic sel" data-t="coding" onclick="togTopic(this)">// CODING</div>
+        <div class="topic" data-t="aws" onclick="togTopic(this)">// AWS</div>
+        <div class="topic" data-t="ai" onclick="togTopic(this)">// AI</div>
+        <div class="topic" data-t="tech" onclick="togTopic(this)">// TECH</div>
+        <div class="topic" data-t="productivity" onclick="togTopic(this)">// PRODUCTIVITY</div>
+        <div class="topic" data-t="design" onclick="togTopic(this)">// DESIGN</div>
+        <div class="topic" data-t="business" onclick="togTopic(this)">// BUSINESS</div>
+        <div class="topic" data-t="gaming" onclick="togTopic(this)">// GAMING</div>
+        <div class="topic" data-t="music" onclick="togTopic(this)">// MUSIC</div>
+        <div class="topic" data-t="science" onclick="togTopic(this)">// SCIENCE</div>
+        <div class="topic" data-t="crypto" onclick="togTopic(this)">// CRYPTO</div>
+        <div class="topic" data-t="startups" onclick="togTopic(this)">// STARTUPS</div>
+      </div>
+      <div class="btns">
+        <button class="btn btn-s" onclick="prev()">← BACK</button>
+        <button class="btn btn-p" onclick="finish()">DEPLOY AIBO →</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Launch screen -->
+  <div class="launch" id="launch">
+    <svg class="launch-orb" id="lorb" viewBox="0 0 80 80">
+      <defs><radialGradient id="lg" cx="38%" cy="35%"><stop offset="0%" stop-color="#9b8fef"/><stop offset="100%" stop-color="#3a2fa0"/></radialGradient></defs>
+      <circle cx="40" cy="40" r="36" fill="url(#lg)"/>
+      <ellipse cx="30" cy="30" rx="10" ry="6" fill="white" opacity="0.22"/>
+    </svg>
+    <div class="launch-bar"><div class="launch-fill" id="lfill"></div></div>
+    <div class="launch-text" id="ltext">INITIALIZING...</div>
+  </div>
+
+  <script>
+    const { ipcRenderer } = require('electron')
+
+    let step = 0
+    const TOTAL = 5
+
+    const cfg = {
+      name:      '',
+      shape:     'ball',
+      color:     { main:'#6C5DD3', glow:'#9b8fef', dark:'#3a2fa0' },
+      interests: ['coding'],
+      language:  'en',
+    }
+
+    function updateProgress() {
+      document.getElementById('prog').style.width = (step / (TOTAL-1) * 100) + '%'
+      document.getElementById('step-ind').textContent =
+        String(step+1).padStart(2,'0') + ' / ' + String(TOTAL).padStart(2,'0')
+    }
+
+    function goTo(n) {
+      document.getElementById(`step-${step}`).classList.remove('active')
+      step = n
+      document.getElementById(`step-${step}`).classList.add('active')
+      updateProgress()
+    }
+
+    function next() {
+      if (step === 1) {
+        const v = document.getElementById('name-input').value.trim()
+        if (!v) { document.getElementById('name-input').style.borderColor='#f09b7a'; return }
+        cfg.name = v
+      }
+      if (step < TOTAL-1) goTo(step+1)
+    }
+
+    function prev() { if (step > 0) goTo(step-1) }
+
+    function selShape(el) {
+      document.querySelectorAll('[data-shape]').forEach(c => c.classList.remove('sel'))
+      el.classList.add('sel')
+      cfg.shape = el.dataset.shape
+    }
+
+    function selColor(el) {
+      document.querySelectorAll('.cswatch').forEach(s => s.classList.remove('sel'))
+      el.classList.add('sel')
+      cfg.color = JSON.parse(el.dataset.c)
+      const o = document.getElementById('color-orb')
+      o.style.setProperty('--pm', cfg.color.main)
+      o.style.setProperty('--pg', cfg.color.glow)
+      o.style.setProperty('--pd', cfg.color.dark)
+    }
+
+    function togTopic(el) {
+      el.classList.toggle('sel')
+      const t = el.dataset.t
+      if (el.classList.contains('sel')) { if (!cfg.interests.includes(t)) cfg.interests.push(t) }
+      else cfg.interests = cfg.interests.filter(x => x !== t)
+    }
+
+    async function finish() {
+      const launch = document.getElementById('launch')
+      const fill   = document.getElementById('lfill')
+      const ltext  = document.getElementById('ltext')
+      const lorb   = document.getElementById('lorb')
+
+      // Update launch orb color
+      lorb.querySelector('stop:first-child').setAttribute('stop-color', cfg.color.glow)
+      lorb.querySelector('stop:last-child').setAttribute('stop-color', cfg.color.dark)
+
+      launch.classList.add('show')
+
+      const msgs = [
+        ['SAVING PROFILE...', 20],
+        ['LOADING PERSONALITY...', 40],
+        ['SUBSCRIBING TO FEEDS...', 60],
+        ['INITIALIZING MEMORY...', 80],
+        [`WELCOME, ${cfg.name.toUpperCase() || 'FRIEND'}`, 100],
+      ]
+
+      for (const [msg, pct] of msgs) {
+        ltext.textContent = msg
+        fill.style.width  = pct + '%'
+        await new Promise(r => setTimeout(r, 500))
+      }
+
+      ipcRenderer.send('setup-complete', cfg)
+    }
+
+    document.getElementById('name-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') next()
+    })
+
+    updateProgress()
+  </script>
+</body>
+</html>

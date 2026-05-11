@@ -1,0 +1,22 @@
+{
+  "name": "aibo",
+  "version": "0.4.0",
+  "description": "Aibo - AI Desktop Assistant",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^29.0.0"
+  },
+  "dependencies": {
+    "@playwright/test": "^1.59.1",
+    "cheerio": "^1.2.0",
+    "googleapis": "^171.4.0",
+    "node-fetch": "^3.3.2",
+    "node-screenshots": "^0.2.8",
+    "nodemailer": "^8.0.7",
+    "playwright": "^1.59.1",
+    "rss-parser": "^3.13.0"
+  }
+}
