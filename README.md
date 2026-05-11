@@ -6,7 +6,7 @@
 
 Aibo is a fully autonomous AI desktop assistant built with Electron. It floats on your screen as a 3D metallic orb, follows your cursor across multiple monitors, fixes your code, answers questions, executes tasks, and learns who you are over time.
 
-Built by [@goldiedoestech](https://twitter.com/goldiedoestech) | Follow the AI: [@iamaibo](https://twitter.com/iamaibo)
+Built by [@goldiedoestech](https://twitter.com/goldiedoestech) | Follow the AI: [@BuildingAibo] (https://twitter.com/@BuildingAibo)
 
 ---
 
