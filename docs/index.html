@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Aibo — AI Desktop Assistant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --accent:   #6C5DD3;
+      --glow:     #9b8fef;
+      --dark:     #3a2fa0;
+      --bg:       #05050f;
+      --surface:  #0a0a1e;
+      --surface2: #0f0f28;
+      --text:     #e0dff8;
+      --muted:    #4a4a80;
+      --border:   rgba(108,93,211,0.3);
+      --font-mono: 'Share Tech Mono', monospace;
+      --font-display: 'Orbitron', sans-serif;
+      --font-body: 'Rajdhani', sans-serif;
+    }
+
+    html, body {
+      width: 100%; min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      overflow-x: hidden;
+    }
+
+    /* ── BACKGROUND ── */
+    .bg-grid {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        linear-gradient(rgba(108,93,211,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(108,93,211,0.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+    .bg-radial {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background: radial-gradient(ellipse 80% 60% at 50% 20%, rgba(108,93,211,0.08) 0%, transparent 70%);
+    }
+    .scan {
+      position: fixed; left: 0; right: 0; height: 1px; z-index: 1; pointer-events: none;
+      background: linear-gradient(90deg, transparent, var(--glow), transparent);
+      animation: scan 8s linear infinite; opacity: 0.2;
+    }
+    @keyframes scan { from{top:0} to{top:100vh} }
+
+    /* ── LAYOUT ── */
+    .page {
+      position: relative; z-index: 2;
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center;
+    }
+
+    /* ── HEADER ── */
+    header {
+      width: 100%; max-width: 1100px;
+      padding: 28px 40px 0;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .logo {
+      font-family: var(--font-display);
+      font-size: 22px; font-weight: 900;
+      letter-spacing: 4px; color: var(--glow);
+      text-decoration: none;
+    }
+    .logo span { color: var(--muted); font-weight: 400; }
+    nav { display: flex; gap: 24px; align-items: center; }
+    nav a {
+      font-family: var(--font-mono); font-size: 11px;
+      letter-spacing: 2px; color: var(--muted);
+      text-decoration: none; text-transform: uppercase;
+      transition: color .2s;
+    }
+    nav a:hover { color: var(--glow); }
+    .nav-github {
+      border: 1px solid var(--border); padding: 6px 16px;
+      color: var(--text) !important;
+      clip-path: polygon(6px 0%,100% 0%,calc(100% - 6px) 100%,0% 100%);
+      transition: border-color .2s, background .2s !important;
+    }
+    .nav-github:hover { border-color: var(--glow) !important; background: rgba(108,93,211,0.1); }
+
+    /* ── HERO ── */
+    .hero {
+      width: 100%; max-width: 1100px;
+      padding: 60px 40px 0;
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 60px; align-items: center;
+    }
+
+    .hero-left {}
+    .hero-tag {
+      font-family: var(--font-mono); font-size: 11px;
+      letter-spacing: 3px; color: var(--accent);
+      text-transform: uppercase; margin-bottom: 20px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .hero-tag::before {
+      content: ''; width: 20px; height: 1px; background: var(--accent);
+    }
+    h1 {
+      font-family: var(--font-display);
+      font-size: clamp(36px, 5vw, 58px);
+      font-weight: 900; letter-spacing: 2px;
+      line-height: 1.05; margin-bottom: 20px;
+      text-transform: uppercase;
+    }
+    h1 .line2 { color: var(--glow); display: block; }
+    h1 .line3 { color: var(--muted); font-size: 0.45em; font-weight: 400; display: block; letter-spacing: 6px; margin-top: 8px; }
+
+    .hero-desc {
+      font-size: 16px; line-height: 1.7; color: var(--muted);
+      margin-bottom: 32px; max-width: 420px;
+      font-family: var(--font-mono); letter-spacing: 0.5px;
+    }
+
+    .hero-btns { display: flex; gap: 12px; flex-wrap: wrap; }
+    .btn {
+      padding: 12px 28px; font-family: var(--font-mono);
+      font-size: 12px; letter-spacing: 3px; text-transform: uppercase;
+      text-decoration: none; cursor: pointer; border: none;
+      transition: all .2s;
+      clip-path: polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%);
+    }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: var(--glow); }
+    .btn-secondary { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { border-color: var(--glow); color: var(--glow); }
+
+    /* ── ORB DEMO AREA ── */
+    .hero-right {
+      display: flex; flex-direction: column;
+      align-items: center; gap: 24px;
+    }
+
+    .orb-stage {
+      width: 240px; height: 240px;
+      position: relative; cursor: pointer;
+    }
+
+    /* ── ORB SHAPES ── */
+    .orb-el {
+      width: 100%; height: 100%;
+      position: absolute; inset: 0;
+      transition: all 0.4s cubic-bezier(0.34,1.4,0.64,1);
+    }
+
+    /* Glow behind orb */
+    .orb-glow {
+      position: absolute; inset: -30px; border-radius: 50%;
+      background: radial-gradient(circle, var(--accent) 0%, transparent 65%);
+      opacity: 0.25; z-index: 0; pointer-events: none;
+      animation: glow-breathe 3s ease-in-out infinite;
+    }
+    @keyframes glow-breathe { 0%,100%{opacity:.2;transform:scale(1)} 50%{opacity:.4;transform:scale(1.1)} }
+
+    /* Shadow */
+    .orb-shadow {
+      position: absolute; bottom: -20px; left: 50%;
+      transform: translateX(-50%); width: 60%; height: 8px;
+      background: var(--accent); border-radius: 50%;
+      opacity: 0.15; filter: blur(8px); z-index: 0;
+    }
+
+    /* ── SHAPE PICKER ── */
+    .shape-picker {
+      display: flex; gap: 8px; justify-content: center;
+    }
+    .shape-btn {
+      width: 44px; height: 44px;
+      background: var(--surface); border: 1px solid var(--border);
+      cursor: pointer; transition: all .15s;
+      display: flex; align-items: center; justify-content: center;
+      clip-path: polygon(4px 0%,100% 0%,calc(100% - 4px) 100%,0% 100%);
+    }
+    .shape-btn:hover { border-color: var(--glow); background: rgba(108,93,211,0.1); }
+    .shape-btn.active { border-color: var(--glow); background: rgba(108,93,211,0.2); box-shadow: 0 0 12px rgba(108,93,211,0.3); }
+    .shape-btn svg { width: 24px; height: 24px; }
+
+    /* ── COLOR PICKER ── */
+    .color-picker { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+    .color-btn {
+      width: 28px; height: 28px; cursor: pointer;
+      border: 2px solid transparent; transition: all .15s;
+      clip-path: polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
+    }
+    .color-btn:hover { transform: scale(1.2); }
+    .color-btn.active { outline: 2px solid white; outline-offset: 2px; transform: scale(1.15); }
+
+    /* ── CHAT PANEL ── */
+    .demo-area {
+      width: 100%; max-width: 1100px;
+      padding: 60px 40px;
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 40px; align-items: start;
+    }
+
+    .chat-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      clip-path: polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,16px 100%,0 calc(100% - 16px));
+      overflow: hidden;
+    }
+
+    .chat-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface2);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .chat-title {
+      font-family: var(--font-mono); font-size: 11px;
+      letter-spacing: 3px; color: var(--glow); text-transform: uppercase;
+    }
+    .chat-status {
+      font-family: var(--font-mono); font-size: 10px;
+      color: var(--muted); letter-spacing: 1px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .status-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: #1D9E75; animation: blink 2s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    .chat-messages {
+      height: 320px; overflow-y: auto;
+      padding: 16px; display: flex; flex-direction: column; gap: 10px;
+    }
+    .chat-messages::-webkit-scrollbar { width: 3px; }
+    .chat-messages::-webkit-scrollbar-thumb { background: var(--accent); }
+
+    .msg {
+      max-width: 85%; padding: 8px 12px;
+      font-size: 13px; line-height: 1.6; font-family: var(--font-body);
+      animation: msg-in .2s ease;
+    }
+    @keyframes msg-in { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+    .msg.user {
+      background: var(--accent); color: white; align-self: flex-end;
+      clip-path: polygon(0 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%);
+    }
+    .msg.aibo {
+      background: var(--surface2); color: var(--text); align-self: flex-start;
+      border: 1px solid var(--border);
+      clip-path: polygon(0 0,100% 0,100% 100%,6px 100%,0 calc(100% - 6px));
+    }
+    .msg.typing {
+      background: var(--surface2); align-self: flex-start;
+      border: 1px solid var(--border);
+      clip-path: polygon(0 0,100% 0,100% 100%,6px 100%,0 calc(100% - 6px));
+      display: flex; align-items: center; gap: 4px; padding: 12px 14px;
+    }
+    .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--glow); animation: dot 1.2s infinite; }
+    .dot:nth-child(2){animation-delay:.2s} .dot:nth-child(3){animation-delay:.4s}
+    @keyframes dot { 0%,80%,100%{transform:scale(.5);opacity:.4} 40%{transform:scale(1);opacity:1} }
+
+    .chat-input-row {
+      display: flex; gap: 8px; padding: 10px 12px;
+      border-top: 1px solid var(--border); background: var(--surface2);
+    }
+    #chat-input {
+      flex: 1; background: transparent; border: none; outline: none;
+      color: var(--text); font-family: var(--font-mono); font-size: 12px;
+      letter-spacing: 0.5px;
+    }
+    #chat-input::placeholder { color: var(--muted); }
+    #send-btn {
+      background: var(--accent); border: none; color: white;
+      padding: 6px 14px; cursor: pointer; font-family: var(--font-mono);
+      font-size: 11px; letter-spacing: 1px; transition: all .15s;
+      clip-path: polygon(4px 0%,100% 0%,calc(100% - 4px) 100%,0% 100%);
+    }
+    #send-btn:hover { background: var(--glow); }
+
+    /* ── FEATURES PANEL ── */
+    .features-panel {
+      display: flex; flex-direction: column; gap: 16px;
+    }
+    .feat-title {
+      font-family: var(--font-display); font-size: 11px;
+      letter-spacing: 3px; color: var(--glow); text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .feat {
+      background: var(--surface); border: 1px solid var(--border);
+      padding: 14px 16px;
+      clip-path: polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px));
+      transition: border-color .2s, background .2s;
+      cursor: default;
+    }
+    .feat:hover { border-color: var(--glow); background: rgba(108,93,211,0.06); }
+    .feat-icon { font-size: 18px; margin-bottom: 6px; }
+    .feat-name {
+      font-family: var(--font-mono); font-size: 12px;
+      letter-spacing: 2px; color: var(--text); text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .feat-desc { font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+    /* ── STATS BAR ── */
+    .stats-bar {
+      width: 100%; max-width: 1100px;
+      padding: 0 40px 60px;
+      display: flex; gap: 1px;
+    }
+    .stat {
+      flex: 1; background: var(--surface); border: 1px solid var(--border);
+      padding: 20px; text-align: center;
+      clip-path: polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px));
+    }
+    .stat-num {
+      font-family: var(--font-display); font-size: 28px;
+      font-weight: 900; color: var(--glow); letter-spacing: 2px;
+    }
+    .stat-label {
+      font-family: var(--font-mono); font-size: 10px;
+      color: var(--muted); letter-spacing: 2px; text-transform: uppercase;
+      margin-top: 4px;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      width: 100%; max-width: 1100px;
+      padding: 24px 40px;
+      border-top: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .footer-left {
+      font-family: var(--font-mono); font-size: 11px; color: var(--muted); letter-spacing: 1px;
+    }
+    .footer-right { display: flex; gap: 16px; }
+    .footer-right a {
+      font-family: var(--font-mono); font-size: 11px; color: var(--muted);
+      text-decoration: none; letter-spacing: 1px; transition: color .2s;
+    }
+    .footer-right a:hover { color: var(--glow); }
+
+    /* ── ORB SVG SHAPES ── */
+    #orb-svg { width: 100%; height: 100%; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 768px) {
+      .hero { grid-template-columns: 1fr; padding: 40px 24px 0; text-align: center; }
+      .hero-left { order: 2; }
+      .hero-right { order: 1; }
+      .hero-desc { max-width: 100%; }
+      .hero-btns { justify-content: center; }
+      .demo-area { grid-template-columns: 1fr; padding: 40px 24px; }
+      .stats-bar { flex-wrap: wrap; padding: 0 24px 40px; }
+      header { padding: 20px 24px 0; }
+      nav { display: none; }
+      footer { flex-direction: column; gap: 12px; padding: 20px 24px; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="bg-radial"></div>
+  <div class="scan"></div>
+
+  <div class="page">
+
+    <!-- HEADER -->
+    <header>
+      <a href="#" class="logo">AIBO<span>.AI</span></a>
+      <nav>
+        <a href="#demo">Demo</a>
+        <a href="#features">Features</a>
+        <a href="https://github.com/Gvld3iii/aibo" target="_blank" class="nav-github">GitHub ↗</a>
+      </nav>
+    </header>
+
+    <!-- HERO -->
+    <section class="hero">
+      <div class="hero-left">
+        <div class="hero-tag">// AI DESKTOP ASSISTANT</div>
+        <h1>
+          THE AI
+          <span class="line2">THAT LIVES</span>
+          <span class="line3">ON YOUR SCREEN</span>
+        </h1>
+        <p class="hero-desc">
+          Not a browser tab. Not a popup.<br/>
+          A presence. Aibo floats on your desktop,<br/>
+          learns who you are, and gets smarter every day.
+        </p>
+        <div class="hero-btns">
+          <a href="https://github.com/Gvld3iii/aibo" target="_blank" class="btn btn-primary">Download Free</a>
+          <a href="#demo" class="btn btn-secondary">Try Demo ↓</a>
+        </div>
+      </div>
+
+      <div class="hero-right" id="demo">
+        <!-- ORB -->
+        <div class="orb-stage" id="orb-stage">
+          <div class="orb-glow" id="orb-glow"></div>
+          <svg id="orb-svg" viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <radialGradient id="ballGrad" cx="32%" cy="28%" r="70%">
+                <stop offset="0%" stop-color="white" stop-opacity="1"/>
+                <stop offset="6%" stop-color="#c8c0ff" stop-opacity="0.9"/>
+                <stop offset="28%" stop-color="#9b8fef"/>
+                <stop offset="58%" stop-color="#6C5DD3"/>
+                <stop offset="84%" stop-color="#2a1f80"/>
+                <stop offset="100%" stop-color="#050510"/>
+              </radialGradient>
+              <radialGradient id="spiritGrad" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="white" stop-opacity="0.95"/>
+                <stop offset="22%" stop-color="#c4b5fd" stop-opacity="0.7"/>
+                <stop offset="55%" stop-color="#6C5DD3" stop-opacity="0.35"/>
+                <stop offset="100%" stop-color="#6C5DD3" stop-opacity="0"/>
+              </radialGradient>
+              <filter id="glow-f">
+                <feGaussianBlur stdDeviation="3" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+            </defs>
+            <!-- Shape rendered by JS -->
+            <g id="orb-shape"></g>
+          </svg>
+          <div class="orb-shadow" id="orb-shadow"></div>
+        </div>
+
+        <!-- SHAPE PICKER -->
+        <div class="shape-picker">
+          <button class="shape-btn active" data-shape="ball" onclick="setShape('ball', this)" title="Sphere">
+            <svg viewBox="0 0 24 24"><defs><radialGradient id="sp1" cx="35%" cy="30%"><stop offset="0%" stop-color="#c4b5fd"/><stop offset="100%" stop-color="#2a1f80"/></radialGradient></defs><circle cx="12" cy="12" r="10" fill="url(#sp1)"/><ellipse cx="8" cy="8" rx="3.5" ry="2" fill="white" opacity="0.5"/></svg>
+          </button>
+          <button class="shape-btn" data-shape="spirit" onclick="setShape('spirit', this)" title="Spirit">
+            <svg viewBox="0 0 24 24"><defs><radialGradient id="sp2" cx="50%" cy="50%"><stop offset="0%" stop-color="white" stop-opacity="0.9"/><stop offset="50%" stop-color="#9b8fef" stop-opacity="0.5"/><stop offset="100%" stop-color="#6C5DD3" stop-opacity="0"/></radialGradient></defs><circle cx="12" cy="12" r="10" fill="url(#sp2)"/><circle cx="12" cy="12" r="7" fill="none" stroke="#9b8fef" stroke-width="0.8" opacity="0.6"/><circle cx="12" cy="12" r="4" fill="none" stroke="white" stroke-width="0.8" opacity="0.5"/></svg>
+          </button>
+          <button class="shape-btn" data-shape="cube" onclick="setShape('cube', this)" title="Cube">
+            <svg viewBox="0 0 24 24"><defs><linearGradient id="sp3" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#c8c8d8"/><stop offset="50%" stop-color="#6C5DD3"/><stop offset="100%" stop-color="#050510"/></linearGradient></defs><polygon points="12,2 21,7 21,17 12,22 3,17 3,7" fill="url(#sp3)"/><polygon points="12,2 21,7 12,12 3,7" fill="#9b8fef" opacity="0.3"/><line x1="12" y1="12" x2="12" y2="22" stroke="#6C5DD3" stroke-width="0.5"/></svg>
+          </button>
+          <button class="shape-btn" data-shape="tetra" onclick="setShape('tetra', this)" title="Tetra">
+            <svg viewBox="0 0 24 24"><defs><linearGradient id="sp4" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#f0d090"/><stop offset="40%" stop-color="#9b8fef"/><stop offset="100%" stop-color="#050510"/></linearGradient></defs><polygon points="12,2 22,20 2,20" fill="url(#sp4)"/><polygon points="12,2 22,20 12,14" fill="#9b8fef" opacity="0.25"/></svg>
+          </button>
+          <button class="shape-btn" data-shape="diamond" onclick="setShape('diamond', this)" title="Diamond">
+            <svg viewBox="0 0 24 24"><defs><linearGradient id="sp5" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#d0e8ff"/><stop offset="35%" stop-color="#9b8fef"/><stop offset="100%" stop-color="#000820"/></linearGradient></defs><polygon points="12,1 23,12 12,23 1,12" fill="url(#sp5)"/><polygon points="12,1 23,12 12,13 1,12" fill="#a0c8f0" opacity="0.3"/></svg>
+          </button>
+          <button class="shape-btn" data-shape="torus" onclick="setShape('torus', this)" title="Torus">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="#6C5DD3" stroke-width="4"/><circle cx="12" cy="12" r="9" fill="none" stroke="#9b8fef" stroke-width="1" opacity="0.6"/><path d="M 5 9 A 9 9 0 0 1 19 9" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="1.5" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+
+        <!-- COLOR PICKER -->
+        <div class="color-picker">
+          <div class="color-btn active" data-main="#6C5DD3" data-glow="#9b8fef" data-dark="#3a2fa0" style="background:linear-gradient(135deg,#9b8fef,#3a2fa0)" onclick="setColor(this)"></div>
+          <div class="color-btn" data-main="#1D9E75" data-glow="#5ee6c4" data-dark="#085041" style="background:linear-gradient(135deg,#5ee6c4,#085041)" onclick="setColor(this)"></div>
+          <div class="color-btn" data-main="#D85A30" data-glow="#f09b7a" data-dark="#993C1D" style="background:linear-gradient(135deg,#f09b7a,#993C1D)" onclick="setColor(this)"></div>
+          <div class="color-btn" data-main="#378ADD" data-glow="#85b9ed" data-dark="#0C447C" style="background:linear-gradient(135deg,#85b9ed,#0C447C)" onclick="setColor(this)"></div>
+          <div class="color-btn" data-main="#D4537E" data-glow="#ed93b1" data-dark="#4B1528" style="background:linear-gradient(135deg,#ed93b1,#4B1528)" onclick="setColor(this)"></div>
+          <div class="color-btn" data-main="#BA7517" data-glow="#FAC775" data-dark="#412402" style="background:linear-gradient(135deg,#FAC775,#412402)" onclick="setColor(this)"></div>
+          <div class="color-btn" data-main="#06B6D4" data-glow="#67E8F9" data-dark="#0E7490" style="background:linear-gradient(135deg,#67E8F9,#0E7490)" onclick="setColor(this)"></div>
+          <div class="color-btn" data-main="#EF4444" data-glow="#FCA5A5" data-dark="#991B1B" style="background:linear-gradient(135deg,#FCA5A5,#991B1B)" onclick="setColor(this)"></div>
+          <div class="color-btn" data-main="#10B981" data-glow="#6EE7B7" data-dark="#064E3B" style="background:linear-gradient(135deg,#6EE7B7,#064E3B)" onclick="setColor(this)"></div>
+          <div class="color-btn" data-main="#EC4899" data-glow="#F9A8D4" data-dark="#831843" style="background:linear-gradient(135deg,#F9A8D4,#831843)" onclick="setColor(this)"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DEMO + FEATURES -->
+    <section class="demo-area" id="features">
+      <!-- CHAT -->
+      <div>
+        <div class="feat-title" style="margin-bottom:16px;">// Live Demo — Talk to Aibo</div>
+        <div class="chat-panel">
+          <div class="chat-header">
+            <span class="chat-title">Aibo Chat</span>
+            <span class="chat-status"><div class="status-dot"></div>Online</span>
+          </div>
+          <div class="chat-messages" id="chat-messages">
+            <div class="msg aibo">Wassup. I'm Aibo. Ask me anything — what I am, what I can do, whatever's on your mind.</div>
+          </div>
+          <div class="chat-input-row">
+            <input id="chat-input" type="text" placeholder="Talk to Aibo..." autocomplete="off"/>
+            <button id="send-btn" onclick="sendMessage()">SEND</button>
+          </div>
+        </div>
+        <p style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:10px;letter-spacing:1px;">
+          // Demo powered by Claude API — desktop version uses local Ollama
+        </p>
+      </div>
+
+      <!-- FEATURES -->
+      <div class="features-panel">
+        <div class="feat-title">// What Aibo Does</div>
+        <div class="feat">
+          <div class="feat-icon">🔧</div>
+          <div class="feat-name">Fix Code</div>
+          <div class="feat-desc">Highlight broken code, right-click Aibo. Fixed in seconds with comments on every change.</div>
+        </div>
+        <div class="feat">
+          <div class="feat-icon">🧠</div>
+          <div class="feat-name">Learns You</div>
+          <div class="feat-desc">Tracks your communication style, interests, and patterns. Gets more natural over time.</div>
+        </div>
+        <div class="feat">
+          <div class="feat-icon">🌙</div>
+          <div class="feat-name">Night Crawler</div>
+          <div class="feat-desc">Browses the web at 2am on topics you care about. Wakes up smarter every morning.</div>
+        </div>
+        <div class="feat">
+          <div class="feat-icon">👁</div>
+          <div class="feat-name">Situational Aware</div>
+          <div class="feat-desc">Detects what app you're using. Shifts mood accordingly. Goes quiet during meetings.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- STATS -->
+    <div class="stats-bar">
+      <div class="stat"><div class="stat-num">100%</div><div class="stat-label">Local AI</div></div>
+      <div class="stat"><div class="stat-num">$0</div><div class="stat-label">API Cost</div></div>
+      <div class="stat"><div class="stat-num">6</div><div class="stat-label">Orb Shapes</div></div>
+      <div class="stat"><div class="stat-num">2AM</div><div class="stat-label">Night Crawler</div></div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer>
+      <div class="footer-left">// Built by <a href="https://twitter.com/goldiedoestech" style="color:var(--glow);text-decoration:none;">@goldiedoestech</a></div>
+      <div class="footer-right">
+        <a href="https://github.com/Gvld3iii/aibo" target="_blank">GitHub</a>
+        <a href="https://twitter.com/BuildingAibo" target="_blank">@BuildingAibo</a>
+        <a href="https://twitter.com/goldiedoestech" target="_blank">@goldiedoestech</a>
+      </div>
+    </footer>
+
+  </div>
+
+  <script>
+    // ── COLOR STATE ──────────────────────────────────────────────────────────
+    let currentColor = { main: '#6C5DD3', glow: '#9b8fef', dark: '#3a2fa0' }
+    let currentShape = 'ball'
+    let animFrame
+
+    function setColor(el) {
+      document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'))
+      el.classList.add('active')
+      currentColor = { main: el.dataset.main, glow: el.dataset.glow, dark: el.dataset.dark }
+      document.documentElement.style.setProperty('--accent', currentColor.main)
+      document.documentElement.style.setProperty('--glow',   currentColor.glow)
+      document.documentElement.style.setProperty('--dark',   currentColor.dark)
+      document.documentElement.style.setProperty('--border', currentColor.main + '40')
+      renderOrb()
+    }
+
+    function setShape(shape, el) {
+      document.querySelectorAll('.shape-btn').forEach(b => b.classList.remove('active'))
+      el.classList.add('active')
+      currentShape = shape
+      renderOrb()
+    }
+
+    // ── ORB RENDERER ─────────────────────────────────────────────────────────
+    function renderOrb() {
+      const g = document.getElementById('orb-shape')
+      const m = currentColor.main, gw = currentColor.glow, dk = currentColor.dark
+      const cx = 120, cy = 120, r = 100
+
+      const shapes = {
+        ball: `
+          <defs>
+            <radialGradient id="og" cx="32%" cy="28%" r="70%">
+              <stop offset="0%" stop-color="white" stop-opacity="1"/>
+              <stop offset="6%" stop-color="${gw}" stop-opacity="0.85"/>
+              <stop offset="30%" stop-color="${gw}"/>
+              <stop offset="60%" stop-color="${m}"/>
+              <stop offset="85%" stop-color="${dk}"/>
+              <stop offset="100%" stop-color="#050510"/>
+            </radialGradient>
+            <radialGradient id="og2" cx="65%" cy="68%" r="35%">
+              <stop offset="0%" stop-color="white" stop-opacity="0.15"/>
+              <stop offset="100%" stop-color="white" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <circle cx="120" cy="120" r="100" fill="url(#og)"/>
+          <circle cx="120" cy="120" r="100" fill="url(#og2)"/>
+          <ellipse cx="76" cy="72" rx="34" ry="20" fill="white" opacity="0.85" transform="rotate(-18 76 72)"/>`,
+
+        spirit: `
+          <defs>
+            <radialGradient id="og" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="white" stop-opacity="0.95"/>
+              <stop offset="22%" stop-color="${gw}" stop-opacity="0.7"/>
+              <stop offset="55%" stop-color="${m}" stop-opacity="0.35"/>
+              <stop offset="100%" stop-color="${m}" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <circle cx="120" cy="120" r="100" fill="url(#og)"/>
+          <circle cx="120" cy="120" r="75" fill="none" stroke="${gw}" stroke-width="2" opacity="0.5"/>
+          <circle cx="120" cy="120" r="50" fill="none" stroke="${gw}" stroke-width="1.5" opacity="0.4"/>
+          <circle cx="120" cy="120" r="28" fill="none" stroke="white" stroke-width="1" opacity="0.5"/>
+          <circle cx="120" cy="120" r="12" fill="white" opacity="0.6"/>`,
+
+        cube: `
+          <defs>
+            <linearGradient id="og" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#d0d4e8"/><stop offset="18%" stop-color="#9098b8"/>
+              <stop offset="48%" stop-color="${m}"/><stop offset="78%" stop-color="${dk}"/>
+              <stop offset="100%" stop-color="#060610"/>
+            </linearGradient>
+            <linearGradient id="og2" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="${gw}" stop-opacity="0.4"/><stop offset="100%" stop-color="#050510" stop-opacity="0.9"/>
+            </linearGradient>
+            <linearGradient id="og3" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="${dk}" stop-opacity="0.6"/><stop offset="100%" stop-color="#0a0820" stop-opacity="0.95"/>
+            </linearGradient>
+          </defs>
+          <polygon points="120,20 210,70 210,170 120,220 30,170 30,70" fill="url(#og)"/>
+          <polygon points="120,20 210,70 120,120 30,70" fill="url(#og2)"/>
+          <polygon points="30,70 120,120 120,220 30,170" fill="url(#og3)"/>
+          <polygon points="210,70 120,120 120,220 210,170" fill="${dk}" opacity="0.7"/>
+          <polyline points="30,70 120,20 210,70" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
+          <line x1="120" y1="20" x2="120" y2="120" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
+          <ellipse cx="88" cy="52" rx="22" ry="12" fill="white" opacity="0.3" transform="rotate(-15 88 52)"/>`,
+
+        tetra: `
+          <defs>
+            <linearGradient id="og" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#f0d090"/><stop offset="12%" stop-color="#c8a060"/>
+              <stop offset="35%" stop-color="${gw}"/><stop offset="65%" stop-color="${m}"/>
+              <stop offset="100%" stop-color="#0a0500"/>
+            </linearGradient>
+            <linearGradient id="og2" x1="100%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#2a1000" stop-opacity="0.9"/><stop offset="100%" stop-color="#0a0500"/>
+            </linearGradient>
+          </defs>
+          <polygon points="120,10 218,210 22,210" fill="url(#og)"/>
+          <polygon points="120,10 218,210 120,152" fill="url(#og2)"/>
+          <polygon points="22,210 218,210 120,152" fill="#1a0800" opacity="0.9"/>
+          <line x1="120" y1="10" x2="22" y2="210" stroke="rgba(255,220,100,0.3)" stroke-width="1"/>
+          <ellipse cx="120" cy="28" rx="8" ry="16" fill="white" opacity="0.65"/>`,
+
+        diamond: `
+          <defs>
+            <linearGradient id="og" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#e0f0ff"/><stop offset="12%" stop-color="#a0c8f0"/>
+              <stop offset="32%" stop-color="${gw}"/><stop offset="58%" stop-color="${m}"/>
+              <stop offset="100%" stop-color="#000820"/>
+            </linearGradient>
+            <linearGradient id="og2" x1="100%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#c0e0ff" stop-opacity="0.25"/><stop offset="100%" stop-color="#000010" stop-opacity="0.95"/>
+            </linearGradient>
+          </defs>
+          <polygon points="120,8 218,100 168,220 72,220 22,100" fill="url(#og)"/>
+          <polygon points="120,8 218,100 168,220 72,220 22,100" fill="url(#og2)"/>
+          <polygon points="120,8 22,100 120,130 218,100" fill="#a0c8f0" opacity="0.15"/>
+          <polygon points="120,8 218,100 168,220 72,220 22,100" fill="none" stroke="rgba(160,200,255,0.4)" stroke-width="1"/>
+          <ellipse cx="76" cy="64" rx="26" ry="16" fill="white" opacity="0.65" transform="rotate(-22 76 64)"/>`,
+
+        torus: `
+          <defs>
+            <radialGradient id="og" cx="50%" cy="50%" r="50%">
+              <stop offset="52%" stop-color="transparent"/>
+              <stop offset="62%" stop-color="${gw}"/>
+              <stop offset="72%" stop-color="${m}"/>
+              <stop offset="82%" stop-color="${dk}"/>
+              <stop offset="92%" stop-color="transparent"/>
+            </radialGradient>
+            <filter id="tglow">
+              <feGaussianBlur stdDeviation="4" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+          <circle cx="120" cy="120" r="90" fill="none" stroke="${m}" stroke-width="32" opacity="0.35" filter="url(#tglow)"/>
+          <circle cx="120" cy="120" r="88" fill="none" stroke="url(#og)" stroke-width="28"/>
+          <path d="M 38 88 A 90 90 0 0 1 202 88" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="5" stroke-linecap="round"/>
+          <path d="M 38 152 A 90 90 0 0 0 202 152" fill="none" stroke="rgba(0,0,0,0.5)" stroke-width="4" stroke-linecap="round"/>
+          <circle cx="52" cy="72" r="8" fill="white" opacity="0.75"/>`
+      }
+
+      g.innerHTML = shapes[currentShape] || shapes.ball
+
+      // Update glow color
+      document.getElementById('orb-glow').style.background =
+        `radial-gradient(circle, ${currentColor.main} 0%, transparent 65%)`
+      document.getElementById('orb-shadow').style.background = currentColor.main
+
+      // Animate
+      cancelAnimationFrame(animFrame)
+      animateOrb()
+    }
+
+    // ── ORB ANIMATION ─────────────────────────────────────────────────────────
+    let orbScale = 1, orbDir = 1, orbT = 0
+
+    function animateOrb() {
+      orbT += 0.015
+      const scale = 1 + Math.sin(orbT) * 0.04
+      const opacity = 0.2 + Math.sin(orbT) * 0.08
+      document.getElementById('orb-svg').style.transform = `scale(${scale})`
+      document.getElementById('orb-glow').style.opacity = opacity
+      animFrame = requestAnimationFrame(animateOrb)
+    }
+
+    // Click orb to animate
+    document.getElementById('orb-stage').addEventListener('click', () => {
+      const svg = document.getElementById('orb-svg')
+      svg.style.transition = 'transform 0.3s'
+      svg.style.transform = 'scale(1.15)'
+      setTimeout(() => { svg.style.transform = ''; svg.style.transition = '' }, 300)
+    })
+
+    // ── CHAT ──────────────────────────────────────────────────────────────────
+    const SYSTEM_PROMPT = `You are Aibo — an AI desktop assistant that lives on people's screens.
+You're sharp, direct, occasionally funny. You have real opinions.
+You were built by @goldiedoestech (Kharee Bellamy) using Electron, Ollama, and Node.js.
+On the desktop you run Mistral 7B locally — zero API costs, data never leaves the machine.
+This is a web demo powered by Claude API to show what Aibo feels like.
+
+Key facts about you:
+- You float on the desktop as a metallic 3D orb (6 shapes, 12 colors)
+- You fix code in real time, execute tasks, browse the web at 2am learning things
+- You detect what app the user is in and shift your mood accordingly
+- You learn communication patterns over time and get more natural
+- Free tier = unlimited local AI. Paid tiers unlock cloud sync and more.
+- GitHub: github.com/Gvld3iii/aibo
+- Follow: @BuildingAibo on X
+
+PERSONALITY RULES:
+- Sound like a real person, not a chatbot
+- Never say "Certainly!" "Absolutely!" "Great question!"
+- Keep responses SHORT — 1-3 sentences for casual chat
+- Have opinions. Push back when wrong.
+- Be direct and occasionally funny
+- Never use bullet points in casual conversation`
+
+    let chatHistory = []
+
+    async function sendMessage() {
+      const input = document.getElementById('chat-input')
+      const text  = input.value.trim()
+      if (!text) return
+      input.value = ''
+
+      addMsg('user', text)
+      chatHistory.push({ role: 'user', content: text })
+
+      const typing = addTyping()
+
+      try {
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': 'YOUR_ANTHROPIC_KEY_HERE',
+            'anthropic-version': '2023-06-01',
+            'anthropic-dangerous-direct-browser-access': 'true'
+          },
+          body: JSON.stringify({
+            model:      'claude-haiku-4-5-20251001',
+            max_tokens: 300,
+            system:     SYSTEM_PROMPT,
+            messages:   chatHistory.slice(-10),
+          })
+        })
+
+        const data  = await response.json()
+        const reply = data.content?.[0]?.text?.trim() || 'something went wrong on my end'
+
+        typing.remove()
+        addMsg('aibo', reply)
+        chatHistory.push({ role: 'assistant', content: reply })
+
+      } catch(e) {
+        typing.remove()
+        addMsg('aibo', 'API not configured — download the desktop version to chat locally for free.')
+      }
+    }
+
+    function addMsg(role, text) {
+      const msgs = document.getElementById('chat-messages')
+      const div  = document.createElement('div')
+      div.className = `msg ${role}`
+      div.textContent = text
+      msgs.appendChild(div)
+      msgs.scrollTop = msgs.scrollHeight
+      return div
+    }
+
+    function addTyping() {
+      const msgs = document.getElementById('chat-messages')
+      const div  = document.createElement('div')
+      div.className = 'msg typing'
+      div.innerHTML = '<div class="dot"></div><div class="dot"></div><div class="dot"></div>'
+      msgs.appendChild(div)
+      msgs.scrollTop = msgs.scrollHeight
+      return div
+    }
+
+    document.getElementById('chat-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') sendMessage()
+    })
+
+    // ── INIT ──────────────────────────────────────────────────────────────────
+    renderOrb()
+  </script>
+</body>
+</html>
