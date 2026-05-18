@@ -3,6 +3,10 @@
 > An AI that lives on your screen. Not a chatbot in a browser tab. A presence.
 
 ![Aibo Orb](screenshots%20and%20recordings/setup%20aibo%20screenshot.png)
+## Live Demo
+**[Try Aibo in your browser →](https://gvld3iii.github.io/aibo)**
+
+> Interactive demo — pick your orb shape, choose a color, chat with Aibo live.
 
 Aibo is a fully autonomous AI desktop assistant built with Electron. It floats on your screen as a 3D metallic orb, follows your cursor across multiple monitors, fixes your code, answers questions, executes tasks, and learns who you are over time.
 
